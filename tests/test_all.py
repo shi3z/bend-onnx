@@ -9,12 +9,13 @@ Validates:
 """
 
 import sys
-for p in [
-    "/home/shi3z/snap/antigravity-cli/common/local/lib/python3.14/dist-packages",
-    "/home/shi3z/snap/antigravity-cli/common/local/lib/python3.14/site-packages",
-]:
-    if p not in sys.path:
-        sys.path.insert(0, p)
+if sys.version_info >= (3, 14):
+    for p in [
+        "/home/shi3z/snap/antigravity-cli/common/local/lib/python3.14/dist-packages",
+        "/home/shi3z/snap/antigravity-cli/common/local/lib/python3.14/site-packages",
+    ]:
+        if p not in sys.path:
+            sys.path.insert(0, p)
 
 import os
 import unittest
@@ -47,6 +48,13 @@ class TestBendProofCheck(unittest.TestCase):
                 self.assertEqual(res.returncode, 0, f"{fname} proof checking failed:\n{res.stderr}")
                 self.assertIn("ALL PROOFS CHECK", res.stdout)
 
+    def test_nanogpt_proofs(self):
+        nanogpt_bend = os.path.join(PROJECT_ROOT, "nanogpt", "nanogpt.bend")
+        if os.path.exists(nanogpt_bend):
+            res = subprocess.run([BEND_BIN, nanogpt_bend, "--check-only"], capture_output=True, text=True)
+            self.assertEqual(res.returncode, 0, f"nanogpt.bend proof checking failed:\n{res.stderr}")
+            self.assertIn("ALL PROOFS CHECK", res.stdout)
+
 class TestOnnxModelVerification(unittest.TestCase):
     """Validates end-to-end inference against ONNX Runtime reference."""
     
@@ -65,6 +73,14 @@ class TestOnnxModelVerification(unittest.TestCase):
     def test_matmul_model(self):
         path = os.path.join(PROJECT_ROOT, "models", "matmul_model.onnx")
         self.assertTrue(verify(path), "matmul_model.onnx verification failed")
+
+    def test_resnet_block(self):
+        path = os.path.join(PROJECT_ROOT, "models", "resnet_block.onnx")
+        self.assertTrue(verify(path), "resnet_block.onnx verification failed")
+
+    def test_mini_resnet(self):
+        path = os.path.join(PROJECT_ROOT, "models", "mini_resnet.onnx")
+        self.assertTrue(verify(path), "mini_resnet.onnx verification failed")
 
 class TestMathematicalProperties(unittest.TestCase):
     """Property-based verification of mathematical invariants."""
@@ -99,6 +115,16 @@ class TestMathematicalProperties(unittest.TestCase):
                 predicted = int(line.split(":")[1].strip())
                 break
         self.assertEqual(predicted, expected_class, "Argmax prediction did not match max index")
+
+class TestNanoGPTGeneration(unittest.TestCase):
+    """Verifies autoregressive text generation in pure Bend."""
+    
+    def test_nanogpt_autoregressive_generation(self):
+        nanogpt_bend = os.path.join(PROJECT_ROOT, "nanogpt", "nanogpt.bend")
+        self.assertTrue(os.path.exists(nanogpt_bend), "nanogpt.bend does not exist")
+        res = subprocess.run([BEND_BIN, nanogpt_bend], capture_output=True, text=True)
+        self.assertEqual(res.returncode, 0, f"nanogpt execution failed:\n{res.stderr}")
+        self.assertIn("Output:   BEND IS FAST! ", res.stdout)
 
 if __name__ == '__main__':
     unittest.main()

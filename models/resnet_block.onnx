@@ -1,0 +1,43 @@
+pytorch2.11.0:Ø
+¨
+input
+conv1.weight
+
+conv1.bias/conv1/Conv_output_0/conv1/Conv"Conv*
+	dilations@@ *
+group *
+kernel_shape@@ *
+pads@@@@ *
+strides@@ 
+3
+/conv1/Conv_output_0/Relu_output_0/Relu"Relu
+±
+/Relu_output_0
+conv2.weight
+
+conv2.bias/conv2/Conv_output_0/conv2/Conv"Conv*
+	dilations@@ *
+group *
+kernel_shape@@ *
+pads@@@@ *
+strides@@ 
+7
+/conv2/Conv_output_0
+input/Add_output_0/Add"Add
+&
+/Add_output_0output/Relu_1"Relu
+main_graph*«Bconv1.weightJA‡8>yTH>Ú,b½·]>Ô‡S½ëĞB=ˆë½û¾>·ÄT>^1¾ÖÉQ>¿°4=yQ2>ç¿=ĞÂè=šO½q:>:³=&Zá½v=îgŞ½apâ¼^Ä½R >…>¾Á‰Ş½´Nˆ½b¾ç=¶<§bn¾>ùY>ãM¾úU:>Èª =¥½œ½Ú%>*B
+conv1.biasJÊv=cC>*«Bconv2.weightJÓ<„<˜½Ñ²=<ç‚½Ö'Ë=£}W>…>úÓ½şS>î½,='$õ=¾fìn¾Ö€º½Â 9¾gF>¹	‹=ÌòÇ=@ª˜=[†»¿ã<>+}+¾`&s<¿¼$¾İØ”=W=¦½¨é“=õ#I½h.H>Ô¾3ò¾mô¾¶Y>Ìİ =|?h>0G¾*B
+conv2.biasJúeo¾¤Ô<¾Z
+input
+
+
+
+
+b 
+output
+
+
+
+
+B

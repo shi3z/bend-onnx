@@ -2,6 +2,7 @@ import Base
 
 # ==============================================================================
 # Bend Parallel Matrix & Tensor Library (GPU-Accelerated via Interaction Trees)
+# Supports: GEMM, Conv2D, ResNet Blocks, LayerNorm, GELU, Softmax, ArgMax
 # ==============================================================================
 
 # --- Vector Representation ---
@@ -28,7 +29,7 @@ def vec_dot_acc(x: Vec, y: Vec, acc: F32) -> F32:
 def vec_dot(x: Vec, y: Vec) -> F32:
   vec_dot_acc(x, y, 0.0)
 
-# Vector elementwise addition: x + y
+# Vector elementwise addition: x + y (Residual skip connection)
 def vec_add(x: Vec, y: Vec) -> Vec:
   match x y:
     case VCon{+xh, xt} VCon{+yh, yt}:
@@ -68,7 +69,17 @@ def vec_concat(x: Vec, y: Vec) -> Vec:
     case VCon{h, t}:
       VCon{h, vec_concat(t, y)}
 
-# --- Activation Functions ---
+# Index into vector with out-of-bounds defaulting to 0.0 (used for zero-padding)
+def vec_get(+v: Vec, +idx: U32) -> F32:
+  match v idx:
+    case VCon{+h, _} 0:
+      h
+    case VCon{_, t} _:
+      vec_get(t, U32.sub(idx, 1))
+    case _ _:
+      0.0
+
+# --- Activation & Normalization Functions ---
 
 # ReLU: max(0.0, x)
 def vec_relu(v: Vec) -> Vec:
@@ -92,6 +103,21 @@ def vec_sigmoid(v: Vec) -> Vec:
       VNil{}
     case VCon{+h, t}:
       VCon{f32_sigmoid(h), vec_sigmoid(t)}
+
+# GELU Activation: 0.5 * x * (1.0 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3)))
+def f32_gelu(+x: F32) -> F32:
+  c : F32 = 0.79788456
+  +x3 : F32 = (x * x * x : F32)
+  inner = (c * (x + 0.044715 * x3 : F32) : F32)
+  t = F32.tanh(inner)
+  (0.5 * x * (1.0 + t : F32) : F32)
+
+def vec_gelu(v: Vec) -> Vec:
+  match v:
+    case VNil{}:
+      VNil{}
+    case VCon{+h, t}:
+      VCon{f32_gelu(h), vec_gelu(t)}
 
 # Vector maximum element
 def vec_max_acc(v: Vec, acc: F32) -> F32:
@@ -161,9 +187,42 @@ def vec_argmax(v: Vec) -> U32:
     case VCon{+h, t}:
       vec_argmax_go(t, 0, h, 1)
 
+# --- Layer Normalization ---
+def vec_mean(+v: Vec) -> F32:
+  s = vec_sum(v)
+  n = U32.to_f32(vec_len(v))
+  (s / n : F32)
+
+def vec_sq_diff_acc(+mean: F32, v: Vec, acc: F32) -> F32:
+  match v:
+    case VNil{}:
+      acc
+    case VCon{+h, t}:
+      +d = (h - mean : F32)
+      vec_sq_diff_acc(mean, t, (acc + d * d : F32))
+
+def vec_var(+v: Vec, +mean: F32) -> F32:
+  sq_sum = vec_sq_diff_acc(mean, v, 0.0)
+  n = U32.to_f32(vec_len(v))
+  (sq_sum / n : F32)
+
+def vec_layernorm_step(+mean: F32, +inv_std: F32, v: Vec, gamma: Vec, beta: Vec) -> Vec:
+  match v gamma beta:
+    case VCon{+x, xt} VCon{+g, gt} VCon{+b, bt}:
+      normed = ((x - mean : F32) * inv_std : F32)
+      y = (normed * g + b : F32)
+      VCon{y, vec_layernorm_step(mean, inv_std, xt, gt, bt)}
+    case _ _ _:
+      VNil{}
+
+def vec_layernorm(+v: Vec, gamma: Vec, beta: Vec) -> Vec:
+  +m : F32 = vec_mean(v)
+  v_var : F32 = vec_var(v, m)
+  eps : F32 = 0.00001
+  inv_std = (1.0 / F32.sqrt((v_var + eps : F32)) : F32)
+  vec_layernorm_step(m, inv_std, v, gamma, beta)
+
 # --- Tree-Structured Matrix Representation ---
-# Arranging matrix rows as a balanced binary tree enables Bend to fork
-# tasks across 16,384 GPU lanes via `!` and parallel lets.
 type MatTree is Data:
   MTLeaf{vec: Vec}
   MTNode{left: MatTree, right: MatTree}
@@ -193,8 +252,40 @@ def linear_softmax(+x: Vec, w: MatTree, b: Vec) -> Vec:
   out : Vec = linear_layer(x, w, b)
   vec_softmax(out)
 
+# --- Convolutional (Conv2D) Trees ---
+# Receptive field image patches arranged as a balanced binary tree
+type PatchTree is Data:
+  PTLeaf{patch: Vec}
+  PTNode{left: PatchTree, right: PatchTree}
+
+# Conv2D: Evaluates all spatial patches across GPU lanes concurrently
+def conv2d_patches(patches: PatchTree, +w: MatTree, +b: Vec) -> Vec:
+  match patches:
+    case PTLeaf{patch}:
+      out_channels : Vec = mat_tree_mul(patch, w)
+      vec_add(out_channels, b)
+    case PTNode{left, right}:
+      l r = conv2d_patches!(left, w, b) conv2d_patches!(right, w, b)
+      vec_concat(l, r)
+
+# Per-channel Conv2D: computes spatial map for one filter in NCHW order
+def conv_channel_patches(patches: PatchTree, +filter: Vec, +bias: F32) -> Vec:
+  match patches:
+    case PTLeaf{patch}:
+      VCon{((vec_dot(patch, filter) + bias : F32)), VNil{}}
+    case PTNode{left, right}:
+      l r = conv_channel_patches!(left, filter, bias) conv_channel_patches!(right, filter, bias)
+      vec_concat(l, r)
+
+# Global Average Pooling: computes mean over spatial elements
+def global_avg_pool_channel(x: Vec, +count: U32) -> F32:
+  (vec_sum(x) / U32.to_f32(count) : F32)
+
+# ResNet Residual Add + ReLU block: ReLU(F(X) + X)
+def resnet_add_relu(fx: Vec, x: Vec) -> Vec:
+  vec_relu(vec_add(fx, x))
+
 # --- 2D Full Matrix Multiplication (GEMM) ---
-# Multiplies row with each column in b_cols concurrently
 def row_cols_mul(+row: Vec, b_cols: MatTree) -> Vec:
   match b_cols:
     case MTLeaf{col}:
@@ -203,12 +294,10 @@ def row_cols_mul(+row: Vec, b_cols: MatTree) -> Vec:
       l r = row_cols_mul!(row, left) row_cols_mul!(row, right)
       vec_concat(l, r)
 
-# Matrix result tree
 type MatResult is Data:
   MRLeaf{row: Vec}
   MRNode{left: MatResult, right: MatResult}
 
-# Full 2D parallel matrix multiplication: A (rows) * B (columns)
 def mat_mul_2d(a_rows: MatTree, +b_cols: MatTree) -> MatResult:
   match a_rows:
     case MTLeaf{row}:
@@ -235,7 +324,6 @@ def mat_res_show(m: MatResult) -> String:
     case MRNode{left, right}:
       mat_res_show(left) ++ mat_res_show(right)
 
-# Test entrypoint for matrix library verification
 def main() -> IO(Unit):
   do IO<Unit>:
-    IO.print("Bend Matrix Library Loaded.")
+    IO.print("Bend Matrix & CNN & Transformer Library Loaded.")
