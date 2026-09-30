@@ -21,7 +21,21 @@ import numpy as np
 import onnx
 from onnx import numpy_helper
 
-BEND_BIN = os.path.expanduser("~/.bend/bin/bend")
+def find_bend_bin() -> str:
+    import shutil
+    b = shutil.which("bend")
+    if b:
+        return b
+    for candidate in [
+        os.path.expanduser("~/.bend/bin/bend"),
+        "/home/shi3z/snap/antigravity-cli/common/.bend/bin/bend",
+        "/home/shi3z/.bend/bin/bend",
+    ]:
+        if os.path.exists(candidate):
+            return candidate
+    return "bend"
+
+BEND_BIN = find_bend_bin()
 
 def format_f32(v: float) -> str:
     """Format a float value for Bend syntax (handling negative numbers safely)."""

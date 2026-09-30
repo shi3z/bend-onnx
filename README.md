@@ -20,7 +20,7 @@ It translates standard **[ONNX](https://onnx.ai/)** (Open Neural Network Exchang
 
 ## 🧠 nanoGPT in Pure Bend (Transformer)
 
-We ported the complete **nanoGPT** (GPT-2 style decoder-only Transformer) to pure Bend:
+We ported the complete **[nanoGPT](https://github.com/karpathy/nanoGPT)** (Andrej Karpathy's clean, hackable GPT-2 style decoder-only Transformer) to pure, formally verified Bend using Karpathy's official `model.py` architecture:
 
 ```
 Token Prompt ("BEND ")
@@ -173,8 +173,10 @@ Unlike conventional tensor engines (like cuBLAS or PyTorch) that rely on flat co
 ```
 bend-onnx/
 ├── nanogpt/                    # Complete nanoGPT Transformer Port in Bend
-│   ├── train_and_export.py     # PyTorch nanoGPT trainer & transpiler to pure Bend
-│   ├── generate.py             # CLI autoregressive generation runner
+│   ├── model.py                # Official Karpathy nanoGPT model architecture (GPT, GPTConfig, Block)
+│   ├── train_and_export.py     # Trainer & transpiler from Karpathy GPT to pure Bend
+│   ├── generate.py             # CLI generation runner (supports --backend torch and --backend bend)
+│   ├── ckpt.pt                 # Saved Karpathy nanoGPT PyTorch model checkpoint
 │   └── nanogpt.bend            # Pure, formally-verified Bend nanoGPT program
 ├── models/                     # Sample ONNX and compiled Bend models
 │   ├── create_models.py        # Generates test ONNX models (Linear, MLP, Digits, MatMul, ResNet)

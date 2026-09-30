@@ -26,9 +26,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from src.onnx_compiler import OnnxToBendCompiler, verify, run_bend, parse_bend_vector
-
-BEND_BIN = os.path.expanduser("~/.bend/bin/bend")
+from src.onnx_compiler import OnnxToBendCompiler, verify, run_bend, parse_bend_vector, BEND_BIN
 
 class TestBendProofCheck(unittest.TestCase):
     """Ensures all Bend programs pass Bend's strict formal proof checker."""

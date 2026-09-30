@@ -15,8 +15,8 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from nanogpt.train_and_export import CHARS, VOCAB_SIZE, encode, decode, export_to_bend, train_model
-
-BEND_BIN = os.path.expanduser("~/.bend/bin/bend")
+from nanogpt.model import GPT, GPTConfig
+from src.onnx_compiler import BEND_BIN
 
 def main():
     parser = argparse.ArgumentParser(description="nanoGPT text generation runner for Bend")
@@ -37,13 +37,19 @@ def main():
     print(f"Backend: {args.backend}")
     print("=========================")
 
+    ckpt_path = os.path.join(PROJECT_ROOT, "nanogpt", "ckpt.pt")
     if args.backend == "torch":
-        model, _ = train_model()
+        if os.path.exists(ckpt_path):
+            ckpt = torch.load(ckpt_path, weights_only=False)
+            model = GPT(ckpt['config'])
+            model.load_state_dict(ckpt['model'])
+        else:
+            model, _ = train_model()
         model.eval()
         cur_ids = encode(valid_prompt)
         for _ in range(args.steps):
             x = torch.tensor([cur_ids], dtype=torch.long)
-            logits = model(x)
+            logits, _ = model(x)
             next_id = int(torch.argmax(logits[0, -1]).item())
             cur_ids.append(next_id)
         print(f"Generated Result: '{decode(cur_ids)}'")
