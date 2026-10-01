@@ -152,52 +152,111 @@ def mat_colsum(m: Mat, +w: Nat) -> Vec:
   mat_colsum_acc(m, vec_zeros(w))
 
 # A B^T : rows of A dotted with rows of B
-def mat_nt_row(+a: Vec, b: Mat) -> Vec:
+def mat_nt_row_acc(+a: Vec, b: Mat, acc: Vec) -> Vec:
   match b:
     case MNil{}:
-      VNil{}
+      acc
     case MCon{br, bt}:
-      VCon{vec_dot(a, br), mat_nt_row(a, bt)}
+      mat_nt_row_acc(a, bt, VCon{vec_dot(a, br), acc})
+
+def mat_nt_row(+a: Vec, b: Mat) -> Vec:
+  vrev(mat_nt_row_acc(a, b, VNil{}))
+
+def mat_nt_seq(a: Mat, +b: Mat) -> Mat:
+  match a:
+    case MNil{}:
+      MNil{}
+    case MCon{ar, at}:
+      MCon{mat_nt_row(ar, b), mat_nt_seq(at, b)}
+
+def mat_len_acc(m: Mat, +acc: U32) -> U32:
+  match m:
+    case MNil{}:
+      acc
+    case MCon{_, rt}:
+      mat_len_acc(rt, (acc + 1 : U32))
+
+def mat_take(m: Mat, +n: U32) -> Mat:
+  match m n:
+    case MCon{r, rt} 0:
+      MNil{}
+    case MCon{r, rt} _:
+      MCon{r, mat_take(rt, U32.sub(n, 1))}
+    case _ _:
+      MNil{}
+
+def mat_drop(m: Mat, +n: U32) -> Mat:
+  match m n:
+    case MCon{_, rt} 0:
+      m
+    case MCon{_, rt} _:
+      mat_drop(rt, U32.sub(n, 1))
+    case _ _:
+      m
+
+def mat_cat(a: Mat, b: Mat) -> Mat:
+  match a:
+    case MNil{}:
+      b
+    case MCon{r, rt}:
+      MCon{r, mat_cat(rt, b)}
+
+# Row-parallel A B^T: split the rows of A in halves `d` times (2^d independent tasks).
+# One sample would otherwise occupy a single (slow) GPU lane for its whole life.
+def mat_nt_p(+d: Nat, +a: Mat, +b: Mat) -> Mat:
+  match d:
+    case 0n:
+      mat_nt_seq(a, b)
+    case 1n+k:
+      +h : U32 = U32.div(mat_len_acc(a, 0), 2)
+      l r = mat_nt_p(k, mat_take(a, h), b) mat_nt_p(k, mat_drop(a, h), b)
+      mat_cat(l, r)
 
 def mat_nt(a: Mat, +b: Mat) -> Mat:
-  match a:
+  mat_nt_p(fork_depth(), a, b)
+
+# Transpose (w = row width). Every product below is then a DOT-product loop (mat_nt):
+# dots allocate nothing but their output, whereas axpy-style loops allocate two
+# lists per scalar (scale, then add).
+def mat_heads(m: Mat) -> Vec:
+  match m:
+    case MNil{}:
+      VNil{}
+    case MCon{r, rt}:
+      match r:
+        case VNil{}:
+          VNil{}
+        case VCon{h, _}:
+          VCon{h, mat_heads(rt)}
+
+def mat_tails(m: Mat) -> Mat:
+  match m:
     case MNil{}:
       MNil{}
-    case MCon{ar, at}:
-      MCon{mat_nt_row(ar, b), mat_nt(at, b)}
+    case MCon{r, rt}:
+      match r:
+        case VNil{}:
+          MNil{}
+        case VCon{_, t}:
+          MCon{t, mat_tails(rt)}
 
-# A B : each row of A is a linear combination of the rows of B (w = width of B)
-def lincomb(r: Vec, b: Mat, acc: Vec) -> Vec:
-  match r b:
-    case VCon{+c, rt} MCon{br, bt}:
-      lincomb(rt, bt, vec_add(acc, vec_scale(c, br)))
-    case _ _:
-      acc
-
-def mat_nn(a: Mat, +b: Mat, +w: Nat) -> Mat:
-  match a:
-    case MNil{}:
+def mat_t_go(+w: Nat, +m: Mat) -> Mat:
+  match w:
+    case 0n:
       MNil{}
-    case MCon{ar, at}:
-      MCon{lincomb(ar, b, vec_zeros(w)), mat_nn(at, b, w)}
+    case 1n+p:
+      MCon{mat_heads(m), mat_t_go(p, mat_tails(m))}
 
-# A^T B = sum_t outer(A_t, B_t)   (ra = width of A, cb = width of B)
-def mat_outer_acc(acc: Mat, a: Vec, +b: Vec) -> Mat:
-  match acc a:
-    case MCon{row, rest} VCon{+ai, at}:
-      MCon{vec_add(row, vec_scale(ai, b)), mat_outer_acc(rest, at, b)}
-    case _ _:
-      acc
+def mat_t(m: Mat, w: Nat) -> Mat:
+  mat_t_go(w, m)
 
-def mat_tn_acc(a: Mat, b: Mat, acc: Mat) -> Mat:
-  match a b:
-    case MCon{ar, at} MCon{br, bt}:
-      mat_tn_acc(at, bt, mat_outer_acc(acc, ar, br))
-    case _ _:
-      acc
+# A B  = A (B^T)^T  : (w = width of B)
+def mat_nn(a: Mat, b: Mat, +w: Nat) -> Mat:
+  mat_nt(a, mat_t(b, w))
 
+# A^T B = (A^T) (B^T)^T  (ra = width of A, cb = width of B)
 def mat_tn(a: Mat, b: Mat, +ra: Nat, +cb: Nat) -> Mat:
-  mat_tn_acc(a, b, mat_zeros(ra, cb))
+  mat_nt(mat_t(a, ra), mat_t(b, cb))
 
 # acc[idx] += row
 def mat_row_add(acc: Mat, +idx: U32, row: Vec) -> Mat:
@@ -385,8 +444,11 @@ type P is Data:
 def lin_fwd(+x: Mat, +w: Mat, +b: Vec) -> Mat:
   mat_add_bias(mat_nt(x, w), b)
 
+type G is Data:
+  G{loss: F32, wte: Mat, wpe: Mat, ln1g: Vec, ln1b: Vec, wq: Mat, bq: Vec, wk: Mat, bk: Vec, wv: Mat, bv: Vec, wo: Mat, bo: Vec, ln2g: Vec, ln2b: Vec, wfc: Mat, bfc: Vec, wmp: Mat, bmp: Vec, lnfg: Vec, lnfb: Vec}
+
 # --- One sample: forward + backward -> [loss, d params ...] ------------------------------------
-def sample_grad(+p: P, toks: Toks, tgts: Toks) -> Vec:
+def sample_grad(+p: P, toks: Toks, tgts: Toks) -> G:
   match p:
     case P{+wte, +wpe, +ln1g, +ln1b, +wq, +bq, +wk, +bk, +wv, +bv, +wo, +bo, +ln2g, +ln2b, +wfc, +bfc, +wmp, +bmp, +lnfg, +lnfb}:
       +toks2 : Toks = toks
@@ -457,26 +519,39 @@ def sample_grad(+p: P, toks: Toks, tgts: Toks) -> Vec:
       +de : Mat = mat_add(dr1, mat_ln_bwd(dn1b, xh1, rs1, ln1g))
       dwpe : Mat = de
       dwte : Mat = mat_add(dwte_head, scatter_add(toks2, de, mat_zeros(nV(), nC())))
-      vcat(VCon{loss, VNil{}}, vcat(mat_flat(dwte), vcat(mat_flat(dwpe),
-        vcat(dln1g, vcat(dln1b,
-        vcat(mat_flat(dwq), vcat(dbq, vcat(mat_flat(dwk), vcat(dbk,
-        vcat(mat_flat(dwv), vcat(dbv, vcat(mat_flat(dwo), vcat(dbo,
-        vcat(dln2g, vcat(dln2b,
-        vcat(mat_flat(dwfc), vcat(dbfc, vcat(mat_flat(dwmp), vcat(dbmp,
-        vcat(dlnfg, dlnfb))))))))))))))))))))
+      G{loss, dwte, dwpe, dln1g, dln1b, dwq, dbq, dwk, dbk, dwv, dbv, dwo, dbo, dln2g, dln2b, dwfc, dbfc, dwmp, dbmp, dlnfg, dlnfb}
+
+# Gradients stay structured (a record of matrices) all the way up the fork tree: one cheap
+# pass per field per node, instead of flattening to a 4.6k-element list in every leaf and
+# re-walking it 3 times per tree level. The flat vector is built once, at the root.
+def g_add(a: G, b: G) -> G:
+  match a b:
+    case G{a_loss, a_wte, a_wpe, a_ln1g, a_ln1b, a_wq, a_bq, a_wk, a_bk, a_wv, a_bv, a_wo, a_bo, a_ln2g, a_ln2b, a_wfc, a_bfc, a_wmp, a_bmp, a_lnfg, a_lnfb} G{b_loss, b_wte, b_wpe, b_ln1g, b_ln1b, b_wq, b_bq, b_wk, b_bk, b_wv, b_bv, b_wo, b_bo, b_ln2g, b_ln2b, b_wfc, b_bfc, b_wmp, b_bmp, b_lnfg, b_lnfb}:
+      G{(a_loss + b_loss : F32), mat_add(a_wte, b_wte), mat_add(a_wpe, b_wpe), vec_add(a_ln1g, b_ln1g), vec_add(a_ln1b, b_ln1b), mat_add(a_wq, b_wq), vec_add(a_bq, b_bq), mat_add(a_wk, b_wk), vec_add(a_bk, b_bk), mat_add(a_wv, b_wv), vec_add(a_bv, b_bv), mat_add(a_wo, b_wo), vec_add(a_bo, b_bo), vec_add(a_ln2g, b_ln2g), vec_add(a_ln2b, b_ln2b), mat_add(a_wfc, b_wfc), vec_add(a_bfc, b_bfc), mat_add(a_wmp, b_wmp), vec_add(a_bmp, b_bmp), vec_add(a_lnfg, b_lnfg), vec_add(a_lnfb, b_lnfb)}
+
+def g_flat(g: G) -> Vec:
+  match g:
+    case G{loss, wte, wpe, ln1g, ln1b, wq, bq, wk, bk, wv, bv, wo, bo, ln2g, ln2b, wfc, bfc, wmp, bmp, lnfg, lnfb}:
+      vcat(VCon{loss, VNil{}}, vcat(mat_flat(wte), vcat(mat_flat(wpe),
+        vcat(ln1g, vcat(ln1b,
+        vcat(mat_flat(wq), vcat(bq, vcat(mat_flat(wk), vcat(bk,
+        vcat(mat_flat(wv), vcat(bv, vcat(mat_flat(wo), vcat(bo,
+        vcat(ln2g, vcat(ln2b,
+        vcat(mat_flat(wfc), vcat(bfc, vcat(mat_flat(wmp), vcat(bmp,
+        vcat(lnfg, lnfb))))))))))))))))))))
 
 # @@GENERATED@@
 
 # --- Batch: balanced fork-join tree of 2^d samples, gradients summed on the way up --------------
-def batch_grad(+d: Nat, +p: P, +idx: U32) -> Vec:
+def batch_grad(+d: Nat, +p: P, +idx: U32) -> G:
   match d:
     case 0n:
       sample_grad(p, phrase_x(idx), phrase_y(idx))
     case 1n+k:
       a b = batch_grad(k, p, (idx * 2 : U32)) batch_grad(k, p, (idx * 2 + 1 : U32))
-      vflat_add(a, b)
+      g_add(a, b)
 
-def batch_grad_gpu(+d: Nat, +p: P) -> Vec:
+def batch_grad_gpu(+d: Nat, +p: P) -> G:
   batch_grad!(d, p, 0)
 
 # --- AdamW (weight_decay = 0) over the flat parameter vector ---------------------------------------
@@ -529,7 +604,7 @@ def train_loop(+n: Nat, +flat: Vec, +m: Vec, +v: Vec, +step: U32, +t0: Nat) -> I
         return Unit{}
     case 1n+k:
       do IO<Unit>:
-        +g : Vec = vflat_scale(inv_bt(), batch_grad_gpu(depth(), unflatten(flat)))
+        +g : Vec = vflat_scale(inv_bt(), g_flat(batch_grad_gpu(depth(), unflatten(flat))))
         +loss : F32 = vec_get(g, 0)
         +grads : Vec = vdrop(1n, g)
         +tf : F32 = U32.to_f32((step + 1 : U32))

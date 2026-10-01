@@ -29,6 +29,7 @@ Y = [enc(p)[1:] for p in PHRASES]
 T = len(X[0])
 
 LR, B1, B2, EPS = 0.01, 0.9, 0.999, 1e-8
+FORK = int(os.environ.get('BEND_FORK', '3'))  # row-parallel split depth inside each sample
 
 
 # ------------------------------------------------------------------ model / params
@@ -96,14 +97,15 @@ def quantize(flat):
 
 
 # ------------------------------------------------------------------ Bend source
-def gen_bend(C, depth, steps, print_every, flat):
+def gen_bend(C, depth, steps, print_every, flat, fork=None):
+    fork = FORK if fork is None else fork
     F = 4 * C
     sizes = field_sizes(C)
     nparam = sum(s for _, s in sizes)
     assert nparam == len(flat), (nparam, len(flat))
     B = 2 ** depth
     hdr = [f"def nV() -> Nat:\n  {V}n", f"def nC() -> Nat:\n  {C}n", f"def nF() -> Nat:\n  {F}n",
-           f"def nT() -> Nat:\n  {T}n", f"def fscale() -> F32:\n  {f32lit(1/math.sqrt(C))}"]
+           f"def nT() -> Nat:\n  {T}n", f"def fork_depth() -> Nat:\n  {fork}n", f"def fscale() -> F32:\n  {f32lit(1/math.sqrt(C))}"]
     for n, s in sizes:
         hdr.append(f"def sz_{n}() -> Nat:\n  {s}n")
     header = "\n\n".join(hdr)
@@ -209,11 +211,11 @@ def _unlimited_stack():
     resource.setrlimit(resource.RLIMIT_STACK, (4 << 30, resource.RLIM_INFINITY))  # 'unlimited' breaks the thread stacks
 
 
-def build_bend(C, depth, steps, print_every, flat, tag):
+def build_bend(C, depth, steps, print_every, flat, tag, fork=None):
     os.makedirs(WORK, exist_ok=True)
     src = os.path.join(WORK, f"train_{tag}.bend")
     out = os.path.join(WORK, f"train_{tag}")
-    open(src, "w").write(gen_bend(C, depth, steps, print_every, flat))
+    open(src, "w").write(gen_bend(C, depth, steps, print_every, flat, fork))
     t = time.time()
     p = subprocess.run([BEND, src, "-o", out], capture_output=True, text=True, env=env(),
                        preexec_fn=_unlimited_stack)
@@ -344,12 +346,14 @@ def cmd_bench(a):
             row[f"torch_{dev}"] = r["ms_per_step"]
         # --- Bend
         steps = a.steps
-        binary, bt = build_bend(C, depth, steps, 1, flat, f"bench_C{C}_d{depth}")
+        # CPU: sequential samples are fastest (fork_depth 0); GPU: split each sample over 2^4 lanes.
+        bins = {False: build_bend(C, depth, steps, 1, flat, f"bench_C{C}_d{depth}_f0", 0)[0],
+                True: build_bend(C, depth, steps, 1, flat, f"bench_C{C}_d{depth}_f{a.gpu_fork}", a.gpu_fork)[0]}
         for name, gpu, thr in (("bend_cpu1", False, 1), ("bend_cpu24", False, 24), ("bend_gpu", True, None)):
             if name == "bend_gpu" and depth < a.gpu_min_depth:
                 continue
             try:
-                r = run_bend(binary, gpu, thr, timeout=a.timeout)
+                r = run_bend(bins[gpu], gpu, thr, timeout=a.timeout)
                 row[name] = bend_step_ms(r)
                 if r["rc"] != 0:
                     row[name] = None
@@ -373,6 +377,7 @@ if __name__ == "__main__":
     ap.add_argument("--depths", type=int, nargs="+", default=[0, 2, 4, 6, 8])
     ap.add_argument("--gpu-min-depth", type=int, default=0)
     ap.add_argument("--timeout", type=int, default=900)
+    ap.add_argument("--gpu-fork", type=int, default=4)
     ap.add_argument("--out", default="")
     a = ap.parse_args()
     {"verify": cmd_verify, "bench": cmd_bench}[a.cmd](a)
