@@ -34,12 +34,14 @@ def _bin(name, expr_fn):
             f"      {_tile(expr_fn(i) for i in IDX)}\n")
 
 
-def tile_ops() -> str:
+def tile_ops(lists: bool = True) -> str:
+    """lists=False: only the tile-level primitives (no list-of-tiles types / blk_t)."""
     o = []
     o.append("type Vec is Data:\n  VNil{}\n  VCon{head: F32, tail: Vec}\n")
     o.append("type T16 is Data:\n  T16{" + ", ".join(f"x{i}: F32" for i in IDX) + "}\n")
-    o.append("type TV is Data:\n  QNil{}\n  QCon{h: T16, t: TV}\n")
-    o.append("type Mat is Data:\n  MNil{}\n  MCon{row: TV, rest: Mat}\n")
+    if lists:
+        o.append("type TV is Data:\n  QNil{}\n  QCon{h: T16, t: TV}\n")
+        o.append("type Mat is Data:\n  MNil{}\n  MCon{row: TV, rest: Mat}\n")
     o.append("type Toks is Data:\n  TNil{}\n  TCon{tok: U32, rest: Toks}\n")
 
     # --- scalar GELU (tanh approximation) and its derivative
@@ -109,7 +111,8 @@ def f32_gelu_grad(+x: F32) -> F32:
     for i in reversed(IDX):
         cols = f"QCon{{{_tile(f'r{j}_{i}' for j in IDX)}, {cols}}}"
     args = ", ".join(f"r{j}: T16" for j in IDX)
-    o.append(f"def blk_t({args}) -> TV:\n  match {' '.join(f'r{j}' for j in IDX)}:\n    {cases}\n      {cols}\n")
+    if lists:
+        o.append(f"def blk_t({args}) -> TV:\n  match {' '.join(f'r{j}' for j in IDX)}:\n    {cases}\n      {cols}\n")
 
     # --- scalar Vec <-> tile (flat parameters / gradients are plain F32 lists)
     pat = "VNil{}"
@@ -137,6 +140,30 @@ def tile_mat_ops() -> str:
     dots = ", ".join(f"tv_dot(a, b{j}, 0.0)" for j in IDX)
     o.append(f"def row_nt(+a: TV, b: Mat) -> TV:\n  match b:\n    case {nest}:\n"
              f"      QCon{{T16{{{dots}}}, row_nt(a, bt)}}\n    case _:\n      QNil{{}}\n")
+
+    # Contraction-length specialisation: K tiles of A against K tiles of every B row. The K tile
+    # dot products are inline straight-line code (no tv_dot loop); one tiny helper per B row keeps
+    # each pattern small (Bend caps a constructor/segment at 247 fields).
+    for K in (1, 2, 4):
+        nest = "_"
+        for k in reversed(range(K)):
+            nest = f"QCon{{b{k}, {nest}}}"
+        params = ", ".join(f"+a{k}: T16" for k in range(K))
+        expr = " + ".join(f"t_dot(a{k}, b{k})" for k in range(K))
+        o.append(f"def dotk{K}({params}, b: TV) -> F32:\n  match b:\n    case {nest}:\n      ({expr} : F32)\n"
+                 f"    case _:\n      0.0\n")
+        rows = "bt"
+        for j in reversed(IDX):
+            rows = f"MCon{{r{j}, {rows}}}"
+        call = ", ".join(f"a{k}" for k in range(K))
+        outs = ", ".join(f"dotk{K}({call}, r{j})" for j in IDX)
+        o.append(f"def row_nt{K}_go({params}, b: Mat) -> TV:\n  match b:\n    case {rows}:\n"
+                 f"      QCon{{T16{{{outs}}}, row_nt{K}_go({call}, bt)}}\n    case _:\n      QNil{{}}\n")
+        anest = "_"
+        for k in reversed(range(K)):
+            anest = f"QCon{{a{k}, {anest}}}"
+        o.append(f"def row_nt{K}(+a: TV, b: Mat) -> TV:\n  match a:\n    case {anest}:\n"
+                 f"      row_nt{K}_go({call}, b)\n    case _:\n      QNil{{}}\n")
 
     # transpose of a block of 16 rows, w tiles wide -> 16*w rows, one tile long
     rs = ", ".join(f"r{j}: TV" for j in IDX)

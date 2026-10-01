@@ -361,26 +361,38 @@ def mat_pad16(+m: Mat, +w: Nat) -> Mat:
 def mat_t(m: Mat, +w: Nat) -> Mat:
   mat_t_go(mat_pad16(m, w), w)
 
-def mat_nt_seq(a: Mat, +b: Mat) -> Mat:
+# kk = number of 16-wide tiles in the contraction dimension (selects the unrolled kernel)
+def row_nt_k(+kk: U32, ar: TV, b: Mat) -> TV:
+  match kk:
+    case 1:
+      row_nt1(ar, b)
+    case 2:
+      row_nt2(ar, b)
+    case 4:
+      row_nt4(ar, b)
+    case _:
+      row_nt(ar, b)
+
+def mat_nt_seq(a: Mat, +b: Mat, +kk: U32) -> Mat:
   match a:
     case MNil{}:
       MNil{}
     case MCon{ar, at}:
-      MCon{row_nt(ar, b), mat_nt_seq(at, b)}
+      MCon{row_nt_k(kk, ar, b), mat_nt_seq(at, b, kk)}
 
 # Row-parallel A B^T: split the rows of A in halves `d` times (2^d independent tasks).
-def mat_nt_p(+d: Nat, +a: Mat, +b: Mat) -> Mat:
+def mat_nt_p(+d: Nat, +a: Mat, +b: Mat, +kk: U32) -> Mat:
   match d:
     case 0n:
-      mat_nt_seq(a, b)
+      mat_nt_seq(a, b, kk)
     case 1n+k:
       +h : U32 = U32.div(mat_len_acc(a, 0), 2)
-      l r = mat_nt_p(k, mat_take(a, h), b) mat_nt_p(k, mat_drop(a, h), b)
+      l r = mat_nt_p(k, mat_take(a, h), b, kk) mat_nt_p(k, mat_drop(a, h), b, kk)
       mat_cat(l, r)
 
 # A B^T. Rows of B must come in multiples of 16.
-def mat_nt(a: Mat, +b: Mat) -> Mat:
-  mat_nt_p(fork_depth(), a, b)
+def mat_nt(a: Mat, +b: Mat, +kk: U32) -> Mat:
+  mat_nt_p(fork_depth(), a, b, kk)
 
 def mat_row_add(acc: Mat, +idx: U32, row: TV) -> Mat:
   match acc idx:
@@ -560,8 +572,8 @@ type G is Data:
     ln2g: TV, ln2b: TV, wfc: Mat, bfc: TV, wmp: Mat, bmp: TV,
     lnfg: TV, lnfb: TV}
 
-def lin_fwd(+x: Mat, +w: Mat, +b: TV) -> Mat:
-  mat_add_bias(mat_nt(x, w), b)
+def lin_fwd(+x: Mat, +w: Mat, +b: TV, +kk: U32) -> Mat:
+  mat_add_bias(mat_nt(x, w, kk), b)
 
 # --- One sample: forward + backward -> G -------------------------------------------------------------------------------------
 def sample_grad(+p: P, toks: Toks, tgts: Toks) -> G:
@@ -573,66 +585,66 @@ def sample_grad(+p: P, toks: Toks, tgts: Toks) -> G:
       +xh1 : Mat = mat_xhat(e)
       +rs1 : Vec = mat_rstd(e)
       +n1 : Mat = ln_affine(xh1, ln1g, ln1b)
-      +q : Mat = lin_fwd(n1, wq, bq)
-      +k : Mat = lin_fwd(n1, wk, bk)
-      +v : Mat = lin_fwd(n1, wv, bv)
+      +q : Mat = lin_fwd(n1, wq, bq, kC())
+      +k : Mat = lin_fwd(n1, wk, bk, kC())
+      +v : Mat = lin_fwd(n1, wv, bv, kC())
       +kp : Mat = mat_pad16(k, nCt())
       +vp : Mat = mat_pad16(v, nCt())
       +vT : Mat = mat_t(v, nCt())
-      +a : Mat = mat_softmax(mat_mask(mat_scale(fscale(), mat_nt(q, kp)), 0))
-      +ctx : Mat = mat_nt(a, vT)
-      +o : Mat = lin_fwd(ctx, wo, bo)
+      +a : Mat = mat_softmax(mat_mask(mat_scale(fscale(), mat_nt(q, kp, kC())), 0))
+      +ctx : Mat = mat_nt(a, vT, 1)
+      +o : Mat = lin_fwd(ctx, wo, bo, kC())
       +r1 : Mat = mat_add(e, o)
       +xh2 : Mat = mat_xhat(r1)
       +rs2 : Vec = mat_rstd(r1)
       +n2 : Mat = ln_affine(xh2, ln2g, ln2b)
-      +f : Mat = lin_fwd(n2, wfc, bfc)
+      +f : Mat = lin_fwd(n2, wfc, bfc, kC())
       +h : Mat = mat_gelu(f)
-      +mo : Mat = lin_fwd(h, wmp, bmp)
+      +mo : Mat = lin_fwd(h, wmp, bmp, kF())
       +r2 : Mat = mat_add(r1, mo)
       +xhf : Mat = mat_xhat(r2)
       +rsf : Vec = mat_rstd(r2)
       +nf : Mat = ln_affine(xhf, lnfg, lnfb)
-      +logits : Mat = mat_nt(nf, wte)
+      +logits : Mat = mat_nt(nf, wte, kC())
       +pr : Mat = mat_softmax(logits)
       +tg : Toks = tgts
       loss : F32 = ce_loss(pr, tg, 0.0)
       # ---- backward ----
       +dlog : Mat = mat_ce_grad(pr, tg)
-      dwte_head : Mat = mat_nt(mat_t(dlog, nVt()), mat_t(nf, nCt()))
-      +dnf : Mat = mat_nt(dlog, wteT)
+      dwte_head : Mat = mat_nt(mat_t(dlog, nVt()), mat_t(nf, nCt()), 1)
+      +dnf : Mat = mat_nt(dlog, wteT, kV())
       dlnfg : TV = mat_colsum(mat_mul(dnf, xhf), nCt())
       dlnfb : TV = mat_colsum(dnf, nCt())
       +dr2 : Mat = mat_ln_bwd(dnf, xhf, rsf, lnfg)
-      dwmp : Mat = mat_nt(mat_t(dr2, nCt()), mat_t(h, nFt()))
+      dwmp : Mat = mat_nt(mat_t(dr2, nCt()), mat_t(h, nFt()), 1)
       dbmp : TV = mat_colsum(dr2, nCt())
-      +dh : Mat = mat_nt(dr2, wmpT)
+      +dh : Mat = mat_nt(dr2, wmpT, kC())
       +df : Mat = mat_gelu_bwd(f, dh)
-      dwfc : Mat = mat_nt(mat_t(df, nFt()), mat_t(n2, nCt()))
+      dwfc : Mat = mat_nt(mat_t(df, nFt()), mat_t(n2, nCt()), 1)
       dbfc : TV = mat_colsum(df, nFt())
-      +dn2 : Mat = mat_nt(df, wfcT)
+      +dn2 : Mat = mat_nt(df, wfcT, kF())
       dln2g : TV = mat_colsum(mat_mul(dn2, xh2), nCt())
       dln2b : TV = mat_colsum(dn2, nCt())
       +dr1 : Mat = mat_add(dr2, mat_ln_bwd(dn2, xh2, rs2, ln2g))
-      dwo : Mat = mat_nt(mat_t(dr1, nCt()), mat_t(ctx, nCt()))
+      dwo : Mat = mat_nt(mat_t(dr1, nCt()), mat_t(ctx, nCt()), 1)
       dbo : TV = mat_colsum(dr1, nCt())
-      +dctx : Mat = mat_nt(dr1, woT)
-      +da : Mat = mat_nt(dctx, vp)
-      dv : Mat = mat_take(mat_nt(mat_t(a, 1n), mat_t(dctx, nCt())), nT32())
+      +dctx : Mat = mat_nt(dr1, woT, kC())
+      +da : Mat = mat_nt(dctx, vp, kC())
+      dv : Mat = mat_take(mat_nt(mat_t(a, 1n), mat_t(dctx, nCt()), 1), nT32())
       +ds : Mat = mat_softmax_bwd(a, da)
-      dq : Mat = mat_scale(fscale(), mat_nt(ds, mat_t(k, nCt())))
-      dk : Mat = mat_take(mat_scale(fscale(), mat_nt(mat_t(ds, 1n), mat_t(q, nCt()))), nT32())
+      dq : Mat = mat_scale(fscale(), mat_nt(ds, mat_t(k, nCt()), 1))
+      dk : Mat = mat_take(mat_scale(fscale(), mat_nt(mat_t(ds, 1n), mat_t(q, nCt()), 1)), nT32())
       +dq2 : Mat = dq
       +dk2 : Mat = dk
       +dv2 : Mat = dv
       +n1T : Mat = mat_t(n1, nCt())
-      dwq : Mat = mat_nt(mat_t(dq2, nCt()), n1T)
+      dwq : Mat = mat_nt(mat_t(dq2, nCt()), n1T, 1)
       dbq : TV = mat_colsum(dq2, nCt())
-      dwk : Mat = mat_nt(mat_t(dk2, nCt()), n1T)
+      dwk : Mat = mat_nt(mat_t(dk2, nCt()), n1T, 1)
       dbk : TV = mat_colsum(dk2, nCt())
-      dwv : Mat = mat_nt(mat_t(dv2, nCt()), n1T)
+      dwv : Mat = mat_nt(mat_t(dv2, nCt()), n1T, 1)
       dbv : TV = mat_colsum(dv2, nCt())
-      dn1 : Mat = mat_add(mat_add(mat_nt(dq2, wqT), mat_nt(dk2, wkT)), mat_nt(dv2, wvT))
+      dn1 : Mat = mat_add(mat_add(mat_nt(dq2, wqT, kC()), mat_nt(dk2, wkT, kC())), mat_nt(dv2, wvT, kC()))
       +dn1b : Mat = dn1
       dln1g : TV = mat_colsum(mat_mul(dn1b, xh1), nCt())
       dln1b : TV = mat_colsum(dn1b, nCt())

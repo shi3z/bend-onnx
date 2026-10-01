@@ -15,7 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
 from nanogpt.model import GPT, GPTConfig
-from nanogpt import tile_gen
+from nanogpt import tile_gen, tile3_gen
 
 BEND = "/home/shi3z/snap/antigravity-cli/common/.bend/bin/bend"
 CLANG_BIN = os.environ.get("BEND_CLANG_BIN", "")
@@ -211,7 +211,8 @@ def gen_bend_tile(C, depth, steps, print_every, flat, fork=None):
     consts = [f"def nV() -> Nat:\n  {V}n", f"def nT32() -> U32:\n  {T}", f"def nC() -> Nat:\n  {C}n",
               f"def nCt() -> Nat:\n  {Ct}n", f"def nFt() -> Nat:\n  {Ft}n", f"def nVt() -> Nat:\n  {Vt}n",
               f"def fork_depth() -> Nat:\n  {fork}n", f"def fscale() -> F32:\n  {f32lit(1/math.sqrt(C))}",
-              f"def inv_c() -> F32:\n  {f32lit(1.0 / C)}"]
+              f"def inv_c() -> F32:\n  {f32lit(1.0 / C)}",
+              f"def kC() -> U32:\n  {Ct}", f"def kF() -> U32:\n  {Ft}", f"def kV() -> U32:\n  {Vt}"]
     for n, sz in sizes:
         consts.append(f"def sz_{n}() -> Nat:\n  {sz}n")
     header = "\n\n".join(consts)
@@ -350,6 +351,159 @@ def adam_eps() -> F32:
             + "\n" + mid + "\n" + gen + "\n" + post)
 
 
+
+# ------------------------------------------------------------------ Bend source (v3: tiles inline in list cells)
+def gen_bend_tile3(C, depth, steps, print_every, flat, fork=None):
+    assert C == 16 and T <= 16 and V == 32, "v3 kernels are specialised for C=16, V=32"
+    F = 4 * C
+    B = 2 ** depth
+    sizes = field_sizes(C)
+    nparam = sum(s for _, s in sizes)
+    assert nparam == len(flat)
+    consts = [f"def nV() -> Nat:\n  {V}n", f"def nT32() -> U32:\n  {T}",
+              f"def fscale() -> F32:\n  {f32lit(1/math.sqrt(C))}", f"def inv_c() -> F32:\n  {f32lit(1.0 / C)}"]
+    for n, sz in sizes:
+        consts.append(f"def sz_{n}() -> Nat:\n  {sz}n")
+    header = "\n\n".join(consts)
+
+    # field -> (kind, rows, tiles per row)
+    spec = {"wte": ("m", V, 1), "wpe": ("m", T, 1), "ln1g": ("v", 0, 1), "ln1b": ("v", 0, 1),
+            "wq": ("m", C, 1), "bq": ("v", 0, 1), "wk": ("m", C, 1), "bk": ("v", 0, 1),
+            "wv": ("m", C, 1), "bv": ("v", 0, 1), "wo": ("m", C, 1), "bo": ("v", 0, 1),
+            "ln2g": ("v", 0, 1), "ln2b": ("v", 0, 1), "wfc": ("m", F, 1), "bfc": ("v", 0, 4),
+            "wmp": ("m", C, 4), "bmp": ("v", 0, 1), "lnfg": ("v", 0, 1), "lnfb": ("v", 0, 1)}
+    names = [n for n, _ in sizes]
+
+    # Initial parameters as per-field constants made of T16 literals (no run-time unflatten: it was
+    # inlined into one huge function and exceeded Bend's 247-register arity).
+    def tile_lit(vals):
+        return "T16{" + ", ".join(f32lit(v) for v in vals) + "}"
+
+    def field_const(n):
+        kind, r, wt = spec[n]
+        off = sum(sz for nn, sz in sizes[:names.index(n)])
+        sz = dict(sizes)[n]
+        vals = flat[off:off + sz].tolist()
+        if kind == "v":
+            tiles = [tile_lit(vals[16 * k:16 * k + 16]) for k in range(wt)]
+            lst = "QNil{}"
+            for t_ in reversed(tiles):
+                lst = f"QCon{{{t_}, {lst}}}"
+            return f"def init_{n}() -> TV:\n  {lst}\n"
+        cell = "MNil{}"
+        for row in reversed(range(r)):
+            tiles = [tile_lit(vals[row * 16 * wt + 16 * k: row * 16 * wt + 16 * k + 16]) for k in range(wt)]
+            cell = f"MC{wt}{{{', '.join(tiles)}, {cell}}}"
+        return f"def init_{n}() -> Mat:\n  {cell}\n"
+
+    consts_g = "\n".join(field_const(n) for n in names)
+    consts_g += "\ndef init_g() -> G:\n  G{0.0, " + ", ".join(f"init_{n}()" for n in names) + "}\n"
+    zf = [f"mat_zeros({spec[n][1]}n, {spec[n][2]})" if spec[n][0] == "m" else f"tv_zero({spec[n][2]})" for n in names]
+    consts_g += "\ndef zeros_g() -> G:\n  G{0.0, " + ", ".join(zf) + "}\n"
+    unflat = consts_g
+
+    mk = ["def make_p(p: G) -> P:", "  match p:", "    case G{_, " + ", ".join(f"+{n}" for n in names) + "}:",
+          "      +wteT : Mat = mat_zip2(mat_t1(mat_take(wte, 16)), mat_t1(mat_drop(wte, 16)))",
+          "      +wqT : Mat = mat_t1(wq)", "      +wkT : Mat = mat_t1(wk)", "      +wvT : Mat = mat_t1(wv)",
+          "      +woT : Mat = mat_t1(wo)",
+          "      +wfcT : Mat = mat_zip4(mat_t1(mat_take(wfc, 16)), mat_t1(mat_take(mat_drop(wfc, 16), 16)), mat_t1(mat_take(mat_drop(wfc, 32), 16)), mat_t1(mat_drop(wfc, 48)))",
+          "      +wmpT : Mat = mat_t4(wmp)",
+          "      P{" + ", ".join(names) + ", wteT, wqT, wkT, wvT, woT, wfcT, wmpT}"]
+    unflat += "\n\n" + "\n".join(mk)
+
+    allf = names + ["wteT", "wqT", "wkT", "wvT", "woT", "wfcT", "wmpT"]
+    ptype = ("type P is Data:\n  P{" + ", ".join(f"{n}: " + ("TV" if (n in spec and spec[n][0] == "v") else "Mat") for n in allf) + "}\n\n"
+             "type G is Data:\n  G{loss: F32, " + ", ".join(f"{n}: " + ("TV" if spec[n][0] == "v" else "Mat") for n in names) + "}\n")
+
+    pa = ", ".join(f"a_{n}" for n in names); pb = ", ".join(f"b_{n}" for n in names)
+    adds = ", ".join(f"{'mat_add' if spec[n][0] == 'm' else 'tv_add'}(a_{n}, b_{n})" for n in names)
+    gadd = f"""def g_add(a: G, b: G) -> G:
+  match a b:
+    case G{{a_loss, {pa}}} G{{b_loss, {pb}}}:
+      G{{(a_loss + b_loss : F32), {adds}}}
+
+def g_loss(g: G) -> F32:
+  match g:
+    case G{{l, {", ".join("_" for _ in names)}}}:
+      l
+"""
+
+    def gmap(fname, params, sig, nargs):
+        ks = "abc"[:nargs]
+        pats = " ".join("G{_, " + ", ".join(f"{k}_{n}" for n in names) + "}" for k in ks)
+        decl = ", ".join(f"{k}: G" for k in ks)
+        outs = ", ".join(
+            f"{'mat' if spec[n][0] == 'm' else 'tv'}_{fname}({params}, " + ", ".join(f"{k}_{n}" for k in ks) + ")"
+            for n in names)
+        return (f"def g_{fname}({decl}, {sig}) -> G:\n  match {' '.join(ks)}:\n    case {pats}:\n"
+                f"      G{{0.0, {outs}}}\n")
+
+    gadam = "\n".join([gmap("adam_m", "s, b1, omb", "+s: F32, +b1: F32, +omb: F32", 2),
+                       gmap("adam_v", "s, b2, omb", "+s: F32, +b2: F32, +omb: F32", 2),
+                       gmap("adam_p", "lr, c1, c2, eps", "+lr: F32, +c1: F32, +c2: F32, +eps: F32", 3)])
+
+    batch = """def batch_grad(+d: Nat, +p: P, +idx: U32) -> G:
+  match d:
+    case 0n:
+      sample_grad(p, phrase_x(idx), phrase_y(idx))
+    case 1n+k:
+      a b = batch_grad(k, p, (idx * 2 : U32)) batch_grad(k, p, (idx * 2 + 1 : U32))
+      g_add(a, b)
+"""
+
+    def toks(ids):
+        r = "TNil{}"
+        for t in reversed(ids):
+            r = f"TCon{{{t}, {r}}}"
+        return r
+
+    def table(name, data):
+        cases = "\n".join(f"    case {i}:\n      {toks(d)}" for i, d in enumerate(data[:-1]))
+        return (f"def {name}_at(+i: U32) -> Toks:\n  match i:\n{cases}\n    case _:\n      {toks(data[-1])}\n\n"
+                f"def {name}(+i: U32) -> Toks:\n  {name}_at(U32.mod(i, {len(data)}))")
+
+    flatlib = open(os.path.join(HERE, "train_tile.bend")).read()
+    flat_pre = flatlib[:flatlib.index("# --- TV: vectors as lists of tiles")]       # scalar Vec helpers
+    loop = flatlib[flatlib.index("# --- Training loop"):]
+    loop = loop.replace("g_of_flat(init_flat())", "init_g()").replace("g_of_flat(vec_zeros(n_params()))", "zeros_g()")
+    consts2 = f"""def init_flat() -> Vec:
+  {vec_lit(flat.tolist(), cat="vcat")}
+
+def depth() -> Nat:
+  {depth}n
+
+def batch_size() -> U32:
+  {B}
+
+def inv_bt() -> F32:
+  {f32lit(1.0 / (B * T))}
+
+def n_steps() -> Nat:
+  {steps}n
+
+def n_params() -> Nat:
+  {nparam}n
+
+def nC() -> Nat:
+  {C}n
+
+def adam_lr() -> F32:
+  {f32lit(LR)}
+
+def adam_b1() -> F32:
+  {f32lit(B1)}
+
+def adam_b2() -> F32:
+  {f32lit(B2)}
+
+def adam_eps() -> F32:
+  {f32lit(EPS)}
+"""
+    return "\n\n".join(["import Base", header, tile_gen.tile_ops(False), flat_pre, tile3_gen.library(), ptype,
+                        tile3_gen.sample3(names), tile3_gen.adam_ops(), table("phrase_x", X), table("phrase_y", Y),
+                        unflat, gadd, gadam, consts2, batch, loop])
+
+
 # ------------------------------------------------------------------ run Bend
 def env():
     e = dict(os.environ)
@@ -366,14 +520,14 @@ def _unlimited_stack():
     resource.setrlimit(resource.RLIMIT_STACK, (4 << 30, resource.RLIM_INFINITY))  # 'unlimited' breaks the thread stacks
 
 
-IMPL = os.environ.get('BEND_IMPL', 'tile')  # 'tile' (v2) or 'list' (v1)
+IMPL = os.environ.get('BEND_IMPL', 'tile3')  # 'tile3' (v3) | 'tile' (v2) | 'list' (v1)
 
 
 def build_bend(C, depth, steps, print_every, flat, tag, fork=None):
     os.makedirs(WORK, exist_ok=True)
     src = os.path.join(WORK, f"train_{tag}.bend")
     out = os.path.join(WORK, f"train_{tag}")
-    open(src, "w").write((gen_bend_tile if IMPL == 'tile' else gen_bend)(C, depth, steps, print_every, flat, fork))
+    open(src, "w").write({'tile3': gen_bend_tile3, 'tile': gen_bend_tile, 'list': gen_bend}[IMPL](C, depth, steps, print_every, flat, fork))
     t = time.time()
     p = subprocess.run([BEND, src, "-o", out], capture_output=True, text=True, env=env(),
                        preexec_fn=_unlimited_stack)
@@ -522,8 +676,12 @@ def cmd_bench(a):
         # --- Bend
         steps = a.steps
         # CPU: sequential samples are fastest (fork_depth 0); GPU: split each sample over 2^4 lanes.
-        bins = {False: build_bend(C, depth, steps, 1, flat, f"bench_C{C}_d{depth}_f0", 0)[0],
-                True: build_bend(C, depth, steps, 1, flat, f"bench_C{C}_d{depth}_f{a.gpu_fork}", a.gpu_fork)[0]}
+        if IMPL == "tile3":   # v3 has no intra-sample fork: one binary serves CPU and GPU
+            b0 = build_bend(C, depth, steps, 1, flat, f"bench_C{C}_d{depth}_v3", 0)[0]
+            bins = {False: b0, True: b0}
+        else:
+            bins = {False: build_bend(C, depth, steps, 1, flat, f"bench_C{C}_d{depth}_f0", 0)[0],
+                    True: build_bend(C, depth, steps, 1, flat, f"bench_C{C}_d{depth}_f{a.gpu_fork}", a.gpu_fork)[0]}
         for name, gpu, thr in (("bend_cpu1", False, 1), ("bend_cpu24", False, 24), ("bend_gpu", True, None)):
             if name == "bend_gpu" and depth < a.gpu_min_depth:
                 continue
