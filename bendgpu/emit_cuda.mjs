@@ -74,11 +74,49 @@ function f32lit(bits) {
   return s + "f";
 }
 
+// the read-only buffer of prelude/buf.bend (names carry the importing path as a prefix)
+const isBufTy = (k) => /(^|\/)buf\.Buf$/.test(k) || k === "Buf";
+const bufPrim = (name) => (/(^|\/)buf\.Buf\.get$/.test(name) ? [3, "$1[$2 & ((1u << $0) - 1u)]"] : null);
+const mapArity = (name) => { const m = /(^|\/)buf\.Buf\.map([1-4])$/.exec(name); return m ? +m[2] : 0; };
+const cname = (k) => "bg_" + k.replace(/[^A-Za-z0-9_]/g, "_");
+
 // ------------------------------------------------------------------------------------------ types
-// returns the C type of a (lowered) type term; registers records as structs
+// A type is one of: scalar (U32, F32, Nat, Bool), Buf (a device pointer), a record (single-constructor,
+// non-recursive ADT: a C struct held by value) or a heap ADT (several constructors or recursive: a tagged node in
+// the thread's arena, held by pointer). Type arguments are substituted into the constructor types, so
+// `List<&2, P>` is a list of P.
 function mkTypes(book) {
-  const structs = new Map();    // adt name -> {name, fields:[{n, T}]}
+  const reg = new Map();     // key -> {kind, name, adt, ctors:[{k, fields:[{T, c}]}]}
   const order = [];
+  const busy = new Set();
+
+  const key = (T) => {
+    if (T.$ === "Ref") return T.k;
+    if (T.$ === "ADT") return T.k + "<" + T.x.filter((x) => x.$ !== "Qua" && x.$ !== "Qnt").map(key).join(",") + ">";
+    if (T.$ === "Qua") return "&" + T.q.$;
+    return JSON.stringify(T);
+  };
+  const subst = (T, env) => {
+    if (T.$ === "Var") return env[T.i] !== undefined ? env[T.i] : T;
+    if (T.$ === "ADT") return { ...T, x: T.x.map((x) => subst(x, env)) };
+    return T;
+  };
+  const mentions = (T, k) => (T.$ === "ADT" ? (T.k === k || T.x.some((x) => mentions(x, k))) : T.$ === "Ref" && T.k === k);
+
+  function ctorFields(adt, ctr, args) {
+    let Tm = Bend.term_lower(ctr.T);
+    const env = {};
+    for (let j = 0; j < args.length; j++) { if (Tm.$ !== "All") break; env[Tm.i] = args[j]; Tm = Tm.B; }
+    const out = [];
+    while (Tm.$ === "All") { out.push(subst(Tm.A, env)); Tm = Tm.B; }
+    return out;
+  }
+
+  function cn(T) {
+    const k = key(T);
+    return "bg_" + k.replace(/[^A-Za-z0-9]+/g, "_").replace(/_+$/, "");
+  }
+
   function ctype(T, where) {
     if (T.$ === "Ref" || T.$ === "ADT") {
       const k = T.k;
@@ -87,36 +125,29 @@ function mkTypes(book) {
       if (k === "Bool") return "bool";
       if (isBufTy(k)) return "const float*";
       const adt = book.tlds[k];
-      if (adt && adt.$ === "ADT") {
-        if (adt.c.length !== 1) unsup(`type ${k} has ${adt.c.length} constructors (only Bool/Nat and single-constructor records)`, where);
-        if (!structs.has(k)) {
-          const ctr = adt.c[0];
-          const fs = fieldTypes(ctr, where).map((ft, i) => ({ n: `f${i}`, T: ctype(ft, where) }));
-          structs.set(k, { name: cname(k), ctr: ctr.k, fields: fs });
-          order.push(k);
-        }
-        return cname(k);
-      }
+      if (!adt || adt.$ !== "ADT") return unsup(`type ${Bend.term_show(T)}`, where);
+      const kk = key(T);
+      const name = cn(T);
+      const info = reg.get(kk);
+      if (info) return info.kind === "heap" ? name + "*" : name;
+      const args = T.$ === "ADT" ? T.x : [];
+      const recursive = adt.c.some((c) => ctorFields(adt, c, args).some((f) => mentions(f, k)));
+      const kind = adt.c.length > 1 || recursive ? "heap" : "struct";
+      if (busy.has(kk)) return kind === "heap" ? name + "*" : unsup(`recursive record ${k}`, where);
+      busy.add(kk);
+      const ctors = adt.c.map((c) => ({ k: c.k, fields: ctorFields(adt, c, args).map((f) => ({ T: f })) }));
+      // compute field C types (registers inner types first)
+      for (const c of ctors) c.fields.forEach((f, i) => { f.c = ctype(f.T, where); f.n = `f${i}`; });
+      busy.delete(kk);
+      reg.set(kk, { kind, name, adt: k, ctors });
+      order.push(kk);
+      return kind === "heap" ? name + "*" : name;
     }
     return unsup(`type ${Bend.term_show(T)}`, where);
   }
-  // constructor field types: the constructor's type is @f0:A0 -> ... -> ADT
-  function fieldTypes(ctr, where) {
-    const out = [];
-    let T = Bend.term_lower(ctr.T);
-    while (T.$ === "All") { out.push(T.A); T = T.B; }
-    return out;
-  }
-  return { ctype, structs, order, fieldTypes };
+  const info = (T) => { ctype(T, "<type>"); return reg.get(key(T)); };
+  return { ctype, info, reg, order, key };
 }
-
-// the read-only buffer of prelude/buf.bend (names carry the importing path as a prefix)
-const isBufTy = (k) => /(^|\/)buf\.Buf$/.test(k) || k === "Buf";
-const bufPrim = (name) => (/(^|\/)buf\.Buf\.get$/.test(name) ? [3, "$1[$2 & ((1u << $0) - 1u)]"] : null);
-
-const mapArity = (name) => { const m = /(^|\/)buf\.Buf\.map([1-4])$/.exec(name); return m ? +m[2] : 0; };
-
-const cname = (k) => "bg_" + k.replace(/[^A-Za-z0-9_]/g, "_");
 
 // the (q, name, type) chain of a def's type
 function sig(def) {
@@ -129,8 +160,13 @@ function sig(def) {
 // ------------------------------------------------------------------------------------- emitter
 export function emit(book, entry) {
   const T = mkTypes(book);
-  const defs = new Map();   // compiled defs, in dependency order
+  const defs = new Map();       // compiled defs, in dependency order
   const compiling = new Set();
+  const mks = new Map();        // heap constructor helpers already requested: "type:ctor" -> name
+  const mkText = [];
+  let uid = 0;
+  const fresh = (p) => `${p}${uid++}`;
+  const strip = (x) => (x.$ === "Ann" ? strip(x.x) : x);
 
   function collect(name, where) {
     if (defs.has(name) || PRIM[name] || bufPrim(name)) return;
@@ -142,122 +178,133 @@ export function emit(book, entry) {
     defs.set(name, genDef(name, d));   // callees are collected while generating
   }
 
+  // ---- data layout helpers
+  const famType = (ctrName) => Bend.book_fam(book, ctrName);
+  const inst = (T0) => T.info(T0);
+  const tagOf = (inf, k) => inf.ctors.findIndex((c) => c.k === k);
+  // a heap ADT with exactly one nullary constructor represents it as nullptr
+  const nullCtor = (inf) => {
+    const z = inf.ctors.map((c, i) => [c, i]).filter(([c]) => c.fields.length === 0);
+    return z.length === 1 ? z[0][1] : -1;
+  };
+
+  function mkHelper(inf, ci) {
+    const k = `${inf.name}:${ci}`;
+    if (mks.has(k)) return mks.get(k);
+    const c = inf.ctors[ci];
+    const fn = `mk_${inf.name}_${ci}`;
+    mks.set(k, fn);
+    const ps = c.fields.map((f, i) => `${f.c} x${i}`).join(", ");
+    const sets = c.fields.map((f, i) => `p->u.c${ci}.${f.n} = x${i};`).join(" ");
+    mkText.push(`__host__ __device__ __forceinline__ ${inf.name}* ${fn}(bg_arena* ar${c.fields.length ? ", " : ""}${ps}) {\n  ${inf.name}* p = (${inf.name}*)bg_alloc(ar, sizeof(${inf.name})); p->tag = ${ci}; ${sets} return p;\n}\n`);
+    return fn;
+  }
+
   function genDef(name, d) {
     const { ps, ret } = sig(d);
     const keep = ps.filter((p) => p.q !== "None");
-    const params = keep.map((p, i) => `${T.ctype(p.A, name)} a${i}`);
+    const params = ["bg_arena* ar", ...keep.map((p, i) => `${T.ctype(p.A, name)} a${i}`)];
     const retC = T.ctype(ret, name);
-    let body = "";
-    const env = [];
-    let rest = ps.map((p, i) => ({ ...p, c: p.q === "None" ? null : `a${keep.indexOf(p)}` }));
-    const self = { name, keep };
-    body = stmts(Bend.term_lower(d.v), env, rest, self, "  ");
-    const cn = cname(name);
-    return `__host__ __device__ __forceinline__ ${retC} ${cn}(${params.join(", ")}) {\n  for (;;) {\n${body}  }\n}\n`;
+    let j = 0;
+    const pend = ps.map((p) => ({ c: p.q === "None" ? null : `a${j++}`, A: p.A }));
+    const self = { name, ps, keep, ret };
+    const body = stmts(Bend.term_lower(d.v), [], pend, self, "  ");
+    return `__host__ __device__ ${retC} ${cname(name)}(${params.join(", ")}) {\n  for (;;) {\n${body}  }\n}\n`;
   }
 
-  // a term in "function position": consume Lam / Mat against the remaining params, then the body
-  function stmts(t, env, rest, self, ind) {
+  // a term in "function position": Lam binds / Mat consumes the next pending value
+  function stmts(t, env, pend, self, ind) {
     const where = self.name;
     switch (t.$) {
       case "Lam": {
-        const p = rest.shift();
-        if (!p) unsup("lambda beyond the declared parameters (a closure)", where);
-        env[t.i] = p.c === null ? { erased: true } : p.c;
-        return stmts(t.f, env, rest, self, ind);
+        const e = pend.shift();
+        if (!e) unsup("lambda beyond the available values (a closure)", where);
+        env[t.i] = e.c === null ? { erased: true } : e.c;
+        return stmts(t.f, env, pend, self, ind);
       }
       case "Mat": {
-        const p = rest.shift();
-        if (!p || p.c === null) unsup("match on an erased value", where);
-        return genMat(t, p, env, rest, self, ind);
+        const e = pend.shift();
+        if (!e || e.c === null) unsup("match on an erased value", where);
+        return genMat(t, e, env, pend, self, ind);
       }
       case "Let": {
         let out = "";
         for (let j = 0; j < t.k.length; j++) {
-          const v = `v${t.i[j]}_${self.name.length}`;
-          out += `${ind}auto ${v} = ${expr(t.v[j], env, where)};\n`;
+          const v = fresh("v");
+          const val = t.v[j];
+          const exp = val.$ === "Ann" ? val.T : undefined;
+          out += `${ind}auto ${v} = ${expr(val, env, where, exp)};\n`;
           env[t.i[j]] = v;
         }
-        return out + stmts(t.f, env, rest, self, ind);
+        return out + stmts(t.f, env, pend, self, ind);
       }
       default:
-        return ret(t, env, rest, self, ind);
+        return ret(t, env, pend, self, ind);
     }
   }
 
-  function genMat(t, p, env, rest, self, ind) {
+  function genMat(t, e, env, pend, self, ind) {
     const where = self.name;
-    const A = p.A;
-    const k = A.k;
-    // collect the handlers (Mat chain ends with Efq)
     const hs = [];
     let m = t;
     while (m.$ === "Mat") { hs.push([m.k, m.h]); m = m.m; }
-    const branch = (h, bindFields, ind2) => {
-      const env2 = env.slice();
-      const rest2 = rest.map((r) => ({ ...r }));
-      let body = h;
+    const A = e.A;
+    const kn = A.k;
+    const branch = (h, fields, ind2) => {
       let pre = "";
-      for (const fx of bindFields) {
-        if (body.$ !== "Lam") unsup("pattern handler without a binder", where);
-        pre += `${ind2}${fx.decl(body.i)}\n`;
-        env2[body.i] = fx.ref;
-        body = body.f;
+      const pend2 = [];
+      for (const f of fields) {
+        const v = fresh("f");
+        pre += `${ind2}auto ${v} = ${f.expr};\n`;
+        pend2.push({ c: v, A: f.T });
       }
-      return pre + stmts(body, env2, rest2, self, ind2);
+      for (const r of pend) pend2.push({ ...r });
+      return pre + stmts(h, env.slice(), pend2, self, ind2);
     };
-    if (k === "Bool") {
+    if (kn === "Bool") {
       const f = hs.find((x) => x[0] === "False"), tr = hs.find((x) => x[0] === "True");
-      return `${ind}if (${p.c}) {\n${branch(tr[1], [], ind + "  ")}${ind}} else {\n${branch(f[1], [], ind + "  ")}${ind}}\n`;
+      if (!f || !tr) unsup("incomplete match on Bool", where);
+      return `${ind}if (${e.c}) {\n${branch(tr[1], [], ind + "  ")}${ind}} else {\n${branch(f[1], [], ind + "  ")}${ind}}\n`;
     }
-    if (k === "Nat") {
-      const z = hs.find((x) => x[0] === "Zero"), s = hs.find((x) => x[0] === "Succ");
-      const pv = `p${self.name.length}_${hs.length}_${ind.length}`;
-      return `${ind}if (${p.c} == 0u) {\n${branch(z[1], [], ind + "  ")}${ind}} else {\n`
-        + branch(s[1], [{ decl: (i) => `uint32_t ${pv}_${i} = ${p.c} - 1u;`, ref: `${pv}_${i0(s[1])}` }], ind + "  ") + `${ind}}\n`;
+    if (kn === "Nat") {
+      const z = hs.find((x) => x[0] === "Zero"), s2 = hs.find((x) => x[0] === "Succ");
+      if (!z || !s2) unsup("incomplete match on Nat", where);
+      return `${ind}if (${e.c} == 0u) {\n${branch(z[1], [], ind + "  ")}${ind}} else {\n`
+        + branch(s2[1], [{ expr: `${e.c} - 1u`, T: { $: "Ref", k: "Nat" } }], ind + "  ") + `${ind}}\n`;
     }
-    const adt = book.tlds[k];
-    if (adt && adt.$ === "ADT" && adt.c.length === 1) {
-      T.ctype(A, where);
-      const ctr = adt.c[0];
-      const fields = [];
-      for (let i = 0; i < ctr.n; i++) {
-        const nm = `${p.c}.f${i}`;
-        fields.push({ decl: (b) => `auto fld${b}_${ind.length} = ${nm};`, ref: null });
-      }
-      // bind each field to a fresh local named after the binder index
-      const binders = [];
-      let h = hs[0][1];
-      for (let i = 0; i < ctr.n; i++) { binders.push(h.i); h = h.f; }
-      const env2 = env.slice();
-      let pre = "";
-      h = hs[0][1];
-      for (let i = 0; i < ctr.n; i++) {
-        const v = `r${h.i}_${ind.length}_${self.name.length}`;
-        pre += `${ind}auto ${v} = ${p.c}.f${i};\n`;
-        env2[h.i] = v;
-        h = h.f;
-      }
-      return pre + stmts(h, env2, rest.map((r) => ({ ...r })), self, ind);
+    const inf = inst(A);
+    if (inf.kind === "struct") {
+      const c = inf.ctors[0];
+      const h = hs.find((x) => x[0] === c.k);
+      if (!h) unsup(`match on ${kn} without its constructor`, where);
+      return branch(h[1], c.fields.map((f) => ({ expr: `${e.c}.${f.n}`, T: f.T })), ind);
     }
-    return unsup(`match on type ${k}`, where);
+    // heap ADT: switch on the tag
+    const nc = nullCtor(inf);
+    const tagExpr = nc >= 0 ? `(${e.c} ? ${e.c}->tag : ${nc}u)` : `${e.c}->tag`;
+    let out = `${ind}switch (${tagExpr}) {\n`;
+    for (const [ck, h] of hs) {
+      const ci = tagOf(inf, ck);
+      if (ci < 0) unsup(`constructor ${ck} is not of ${kn}`, where);
+      const c = inf.ctors[ci];
+      out += `${ind}  case ${ci}: {\n${branch(h, c.fields.map((f) => ({ expr: `${e.c}->u.c${ci}.${f.n}`, T: f.T })), ind + "    ")}${ind}  }\n`;
+    }
+    return out + `${ind}  default: __builtin_unreachable();\n${ind}}\n`;
   }
-  const i0 = (h) => h.i;
 
-  // body in value position of a function: a tail self call becomes `continue`
-  function ret(t, env, rest, self, ind) {
+  // body in value position: a tail self call becomes `continue`
+  function ret(t, env, pend, self, ind) {
     const where = self.name;
     const { head, args } = spine(t);
-    if (head.$ === "Ref" && head.k === self.name && args.length === self.keep.length + (sig(book.tlds[self.name]).ps.length - self.keep.length)) {
-      const sg = sig(book.tlds[self.name]);
+    if (head.$ === "Ref" && head.k === self.name && args.length === self.ps.length) {
       const vals = [];
-      sg.ps.forEach((p, i) => { if (p.q !== "None") vals.push(expr(args[i], env, where)); });
+      self.ps.forEach((p, i) => { if (p.q !== "None") vals.push(expr(args[i], env, where, p.A)); });
       let out = "";
       vals.forEach((v, i) => { out += `${ind}auto n${i} = ${v};\n`; });
       vals.forEach((_, i) => { out += `${ind}a${i} = n${i};\n`; });
       return out + `${ind}continue;\n`;
     }
-    return `${ind}return ${expr(t, env, where)};\n`;
+    return `${ind}return ${expr(t, env, where, self.ret)};\n`;
   }
 
   function spine(t) {
@@ -266,11 +313,11 @@ export function emit(book, entry) {
     return { head: t, args };
   }
 
-  function expr(t, env, where) {
+  function expr(t, env, where, exp) {
     switch (t.$) {
       case "Var": {
         const v = env[t.i];
-        if (v === undefined || (typeof v === "object")) unsup(`variable ${t.k} (erased or out of scope)`, where);
+        if (v === undefined || typeof v === "object") unsup(`variable ${t.k} (erased or out of scope)`, where);
         return v;
       }
       case "Lit":
@@ -280,10 +327,22 @@ export function emit(book, entry) {
       case "Ctr": {
         if (t.k === "True") return "true";
         if (t.k === "False") return "false";
-        const c = book.ctrs[t.k];
-        const adtName = Bend.book_fam(book, t.k);
-        T.ctype({ $: "Ref", k: adtName }, where);
-        return `(${cname(adtName)}){${t.x.map((x) => expr(x, env, where)).join(", ")}}`;
+        const fam = famType(t.k);
+        // the type to build: the expected one when it is of this family, else the bare family (non-parametric only)
+        let T0 = exp && exp.k === fam ? exp : null;
+        if (!T0) {
+          const famAdt = book.tlds[fam];
+          const tl = Bend.term_lower(famAdt.c[0].T);
+          if (tl.$ === "All" && (tl.q.$ === "None")) unsup(`cannot infer the type arguments of ${t.k}; annotate with {x : T}`, where);
+          T0 = { $: "Ref", k: fam };
+        }
+        const inf = inst(T0);
+        const ci = tagOf(inf, t.k);
+        const c = inf.ctors[ci];
+        const xs = t.x.map((x, i) => expr(x, env, where, c.fields[i].T));
+        if (inf.kind === "struct") return `(${inf.name}){${xs.join(", ")}}`;
+        if (xs.length === 0 && nullCtor(inf) === ci) return "nullptr";
+        return `${mkHelper(inf, ci)}(ar${xs.length ? ", " : ""}${xs.join(", ")})`;
       }
       case "Ref": return call(t.k, [], env, where);
       case "App": {
@@ -291,7 +350,7 @@ export function emit(book, entry) {
         if (head.$ !== "Ref") unsup("application of a non-global function (a closure)", where);
         return call(head.k, args, env, where);
       }
-      case "Ann": return expr(t.x, env, where);   // {x : T}: the annotation is only for the checker
+      case "Ann": return expr(t.x, env, where, t.T);   // {x : T}: the annotation also gives constructors their type
       case "Mat": return unsup("match in non-tail position", where);
       default: return unsup(`term ${t.$}`, where);
     }
@@ -299,27 +358,82 @@ export function emit(book, entry) {
 
   function call(name, args, env, where) {
     const d = book.tlds[name];
-    // drop erased (type-level) arguments according to the callee's type
-    let kept = args;
+    let kept = args, kt = [];
     if (d && d.$ === "Def") {
       const { ps } = sig(d);
-      kept = args.filter((_, i) => ps[i] && ps[i].q !== "None");
+      kept = []; kt = [];
+      args.forEach((a, i) => { if (ps[i] && ps[i].q !== "None") { kept.push(a); kt.push(ps[i].A); } });
     }
     const prim = PRIM[name] || bufPrim(name);
     if (prim) {
       const [ar, tpl] = prim;
       if (kept.length !== ar) unsup(`partial application of ${name}`, where);
-      const es = kept.map((a) => expr(a, env, where));
+      const es = kept.map((a, i) => expr(a, env, where, kt[i]));
       return tpl.replace(/\$(\d)/g, (_, n) => es[+n]);
     }
     collect(name, where);
-    return `${cname(name)}(${kept.map((a) => expr(a, env, where)).join(", ")})`;
+    return `${cname(name)}(ar${kept.length ? ", " : ""}${kept.map((a, i) => expr(a, env, where, kt[i])).join(", ")})`;
   }
 
+  // ------------------------------------------------------------------------ whole programs
+  const ed0 = book.tlds[entry];
+  if (!ed0 || ed0.$ !== "Def") unsup(`no def named ${entry}`, "<entry>");
+  const esig0 = sig(ed0);
+  const launchers = isBufTy(esig0.ret.k || "") ? pipeline() : mapEntry();
 
-  // A pipeline: a def from Buffers to a Buffer whose body is a chain of `+h : Buf = Buf.mapN(~f, d, bufs.., 0)`
-  // lets ending in a buffer. Each map is one kernel launch over 2^d threads; buffers stay on the device.
-  function emitPipeline() {
+  function structsText() {
+    let out = "";
+    for (const kk of T.order) out += `struct ${T.reg.get(kk).name};\n`;
+    for (const kk of T.order) {
+      const inf = T.reg.get(kk);
+      if (inf.kind === "struct") {
+        out += `struct ${inf.name} { ${inf.ctors[0].fields.map((f) => `${f.c} ${f.n};`).join(" ")} };\n`;
+      } else {
+        const us = inf.ctors.map((c, i) => `struct { ${c.fields.map((f) => `${f.c} ${f.n};`).join(" ")} } c${i};`).join(" ");
+        out += `struct ${inf.name} { uint32_t tag; union { ${us} } u; };\n`;
+      }
+    }
+    return out;
+  }
+
+  const prologue = `// generated by bendgpu/emit_cuda.mjs from the Bend def \`${entry}\`
+#include <cstdio>
+#include <cstdint>
+#include <cstdlib>
+#include <cmath>
+#include <vector>
+#include <cuda_runtime.h>
+
+#ifndef BG_ARENA_KB
+#define BG_ARENA_KB 64      // per-thread arena for heap values (lists, trees): bump allocated, reset for each item
+#endif
+#ifndef BG_STACK_KB
+#define BG_STACK_KB 16      // per-thread call stack (non-tail recursion)
+#endif
+#define BG_ARENA_BYTES ((size_t)BG_ARENA_KB * 1024)
+struct bg_arena { char* cur; };
+static __host__ __device__ __forceinline__ void* bg_alloc(bg_arena* ar, size_t n) { void* p = ar->cur; ar->cur += (n + 15) & ~(size_t)15; return p; }
+
+`;
+  return prologue + structsText() + "\n" + mkText.join("\n") + "\n" + [...defs.values()].join("\n") + launchers;
+
+  // ---------------------------------------------------------------------- entry: parallel map
+  function mapEntry() {
+    collect(entry, "<entry>");
+    const esig = sig(ed0);
+    if (esig.ps.length < 1 || esig.ps[0].A.k !== "U32") unsup("entry must be (i: U32, buffers...) -> value", entry);
+    const bufs = esig.ps.slice(1);
+    for (const b of bufs) if (!isBufTy(b.A.k)) unsup(`entry parameter ${b.k} is not a Buf (scalars: not yet)`, entry);
+    for (const b of bufs) { collect(`${b.k}_init`, entry); collect(`${b.k}_depth`, entry); }
+    const retT = T.ctype(esig.ret, entry);
+    const scalar = ["U32", "F32", "Nat", "Bool"].includes(esig.ret.k);
+    const retInf = scalar ? null : inst(esig.ret);
+    if (retInf && retInf.kind !== "struct") unsup("a kernel result must be a scalar or a record", entry);
+    return kernelHost(entry, retT, retInf, bufs.map((b) => b.k));
+  }
+
+  // ---------------------------------------------------------------------- entry: pipeline of maps
+  function pipeline() {
     const where = entry;
     const ps = esig0.ps;
     for (const b of ps) if (!isBufTy(b.A.k || "")) unsup(`pipeline parameter ${b.k} is not a Buf`, where);
@@ -327,11 +441,10 @@ export function emit(book, entry) {
     const env = [];
     const setup = [], launch = [], kernels = new Map();
     let tmp = 0;
-    ps.forEach((b, i) => { env[i] = `d_${b.k}`; });
     let t = Bend.term_lower(ed0.v);
     let idx = 0;
     while (t.$ === "Lam") { env[t.i] = `d_${ps[idx++].k}`; t = t.f; }
-    const strip = (x) => (x.$ === "Ann" ? strip(x.x) : x);
+    const hostConst = (e) => expr(e, env, where, undefined).replace(/\(ar(, )?/g, "(").replace(/\(\)/g, "(nullptr)").replace(/\(nullptr\)/g, "(nullptr)");
     const mapCall = (v) => {
       const { head, args } = spine(strip(v));
       const n = head.$ === "Ref" ? mapArity(head.k) : 0;
@@ -339,21 +452,23 @@ export function emit(book, entry) {
       const f = strip(args[0]);
       if (f.$ !== "Ref") unsup("the stage function of a map must be a top-level def", where);
       if (args.length !== n + 3) unsup(`Buf.map${n} called with ${args.length} arguments`, where);
-      const fd = book.tlds[f.k];
-      const fs = sig(fd);
+      const fs = sig(book.tlds[f.k]);
       if (fs.ps.length !== n + 1 || fs.ps[0].A.k !== "U32" || fs.ps.slice(1).some((p) => !isBufTy(p.A.k || ""))
         || fs.ret.k !== "F32") unsup(`stage ${f.k} must be (i: U32, ${n} Buf) -> F32`, where);
       collect(f.k, where);
       const off = strip(args[n + 2]);
       if (!(off.$ === "Lit" && off.v === 0)) unsup("map offsets other than 0", where);
-      const dExpr = expr(args[1], env, where);
-      const bufsOf = args.slice(2, 2 + n).map((a) => expr(strip(a), env, where));
+      const dRaw = strip(args[1]);
+      // the depth is a literal or a nullary def: evaluated on the host
+      const dExpr = dRaw.$ === "Lit" ? `${dRaw.v >>> 0}u` : dRaw.$ === "Ref" ? (collect(dRaw.k, where), `${cname(dRaw.k)}(nullptr)`)
+        : unsup("the depth of a map must be a literal or a constant def", where);
+      const bufsOf = args.slice(2, 2 + n).map((a) => expr(strip(a), env, where, undefined));
       if (!kernels.has(f.k)) kernels.set(f.k, n);
       return { f: f.k, n, dExpr, bufs: bufsOf };
     };
     const emitMap = (m, outName) => {
       setup.push(`uint32_t n_${outName} = 1u << (${m.dExpr}); float* ${outName}; CK(cudaMalloc(&${outName}, (size_t)n_${outName} * 4));`);
-      launch.push(`km_${cname(m.f)}<<<(n_${outName} + 255) / 256, 256>>>(${outName}, n_${outName}${m.bufs.map((b) => ", " + b).join("")});`);
+      launch.push(`km_${cname(m.f)}<<<(bg_res(n_${outName}) + 255) / 256, 256>>>(${outName}, n_${outName}, arena${m.bufs.map((b) => ", " + b).join("")});`);
     };
     let outName = null;
     while (true) {
@@ -374,26 +489,25 @@ export function emit(book, entry) {
       emitMap(m, outName);
       break;
     }
-    let out = `// generated by bendgpu/emit_cuda.mjs from the Bend pipeline \`${entry}\`\n#include <cstdio>\n#include <cstdint>\n#include <cstdlib>\n#include <cmath>\n#include <vector>\n#include <cuda_runtime.h>\n\n`;
-    for (const k of T.order) {
-      const st = T.structs.get(k);
-      out += `struct ${st.name} { ${st.fields.map((f) => `${f.T} ${f.n};`).join(" ")} };\n`;
-    }
-    out += "\n" + [...defs.values()].join("\n");
+    let out = commonKernels();
     for (const [f, n] of kernels) {
       const bs = Array.from({ length: n }, (_, i) => `, const float* b${i}`).join("");
       const as = Array.from({ length: n }, (_, i) => `, b${i}`).join("");
-      out += `\n__global__ void km_${cname(f)}(float* out, uint32_t n${bs}) { uint32_t i = blockIdx.x * blockDim.x + threadIdx.x; if (i < n) out[i] = ${cname(f)}(i${as}); }\n`;
+      out += `__global__ void km_${cname(f)}(float* out, uint32_t n, char* arena${bs}) {
+  uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x, stride = gridDim.x * blockDim.x;
+  for (uint32_t i = tid; i < n; i += stride) { bg_arena ar; ar.cur = arena + (size_t)tid * BG_ARENA_BYTES; out[i] = ${cname(f)}(&ar, i${as}); }
+}\n`;
     }
     for (const b of ps) {
-      out += `__global__ void init_${b.k}(float* p, uint32_t n) { uint32_t j = blockIdx.x * blockDim.x + threadIdx.x; if (j < n) p[j] = ${cname(b.k + "_init")}(j); }\n`;
+      out += `__global__ void init_${b.k}(float* p, uint32_t n) { uint32_t j = blockIdx.x * blockDim.x + threadIdx.x; if (j < n) p[j] = ${cname(b.k + "_init")}(nullptr, j); }\n`;
     }
     const inSetup = ps.map((b) => `
-  uint32_t n_${b.k} = 1u << ${cname(b.k + "_depth")}(); float* d_${b.k}; CK(cudaMalloc(&d_${b.k}, (size_t)n_${b.k} * 4));
+  uint32_t n_${b.k} = 1u << ${cname(b.k + "_depth")}(nullptr); float* d_${b.k}; CK(cudaMalloc(&d_${b.k}, (size_t)n_${b.k} * 4));
   init_${b.k}<<<(n_${b.k} + 255) / 256, 256>>>(d_${b.k}, n_${b.k});`).join("");
     out += `
-#define CK(x) do { cudaError_t e = (x); if (e != cudaSuccess) { fprintf(stderr, "CUDA: %s\\n", cudaGetErrorString(e)); return 1; } } while (0)
-int main() {${inSetup}
+int main() {
+  CK(cudaDeviceSetLimit(cudaLimitStackSize, (size_t)BG_STACK_KB * 1024));
+  char* arena; CK(cudaMalloc(&arena, (size_t)BG_RESIDENT * BG_ARENA_BYTES));${inSetup}
   ${setup.join("\n  ")}
   CK(cudaDeviceSynchronize());
   ${launch.join("\n  ")}
@@ -416,60 +530,47 @@ int main() {${inSetup}
     return out;
   }
 
-  const ed0b = null;
-
-  const ed0 = book.tlds[entry];
-  if (!ed0 || ed0.$ !== "Def") unsup(`no def named ${entry}`, "<entry>");
-  const esig0 = sig(ed0);
-  if (isBufTy(esig0.ret.k || "")) return emitPipeline();
-  collect(entry, "<entry>");
-  const ed = book.tlds[entry];
-  const esig = sig(ed);
-  if (esig.ps.length < 1 || esig.ps[0].A.k !== "U32") unsup("entry must be (i: U32, buffers...) -> value", entry);
-  const bufs = esig.ps.slice(1);
-  for (const b of bufs) if (!isBufTy(b.A.k)) unsup(`entry parameter ${b.k} is not a Buf (scalars: not yet)`, entry);
-  for (const b of bufs) { collect(`${b.k}_init`, entry); collect(`${b.k}_depth`, entry); }
-  const retT = T.ctype(esig.ret, entry);
-  // the C source
-  let out = `// generated by bendgpu/emit_cuda.mjs from the Bend def \`${entry}\`\n#include <cstdio>\n#include <cstdint>\n#include <cstdlib>\n#include <cmath>\n#include <vector>\n#include <cuda_runtime.h>\n\n`;
-  for (const k of T.order) {
-    const s = T.structs.get(k);
-    out += `struct ${s.name} { ${s.fields.map((f) => `${f.T} ${f.n};`).join(" ")} };\n`;
-  }
-  out += "\n" + [...defs.values()].join("\n");
-  out += kernelHost(entry, retT, esig.ret, T, bufs.map((b) => b.k));
-  return out;
-}
-
-function kernelHost(entry, retT, retTerm, T, bufs) {
-  const cn = cname(entry);
-  const isStruct = T.structs.has(retTerm.k);
-  const show = isStruct
-    ? T.structs.get(retTerm.k).fields.map((f, i) => `printf(" %.7g", (double)v.f${i});`).join(" ")
-    : `printf(" %.7g", (double)v);`;
-  const bp = bufs.map((b) => `, const float* b_${b}`).join("");
-  const ba = bufs.map((b) => `, d_${b}`).join("");
-  const inits = bufs.map((b) => `
-__global__ void init_${b}(float* p, uint32_t n) { uint32_t j = blockIdx.x * blockDim.x + threadIdx.x; if (j < n) p[j] = ${cname(b + "_init")}(j); }`).join("");
-  const alloc = bufs.map((b) => `
-  uint32_t n_${b} = 1u << ${cname(b + "_depth")}(); float* d_${b}; CK(cudaMalloc(&d_${b}, (size_t)n_${b} * 4));
-  init_${b}<<<(n_${b} + 255) / 256, 256>>>(d_${b}, n_${b});`).join("");
-  return `${inits}
-__global__ void k_${cn}(${retT}* out, uint32_t n${bp}) {
-  uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < n) out[i] = ${cn}(i${bufs.map((b) => `, b_${b}`).join("")});
-}
-
+  function commonKernels() {
+    return `
+#define BG_RESIDENT 16384
+static inline uint32_t bg_res(uint32_t n) { return n < BG_RESIDENT ? n : BG_RESIDENT; }
 #define CK(x) do { cudaError_t e = (x); if (e != cudaSuccess) { fprintf(stderr, "CUDA: %s\\n", cudaGetErrorString(e)); return 1; } } while (0)
+`;
+  }
+
+  function kernelHost(entry, retT, retInf, bufs) {
+    const cn = cname(entry);
+    const isStruct = !!retInf;
+    const show = isStruct
+      ? retInf.ctors[0].fields.map((f, i) => `printf(" %.7g", (double)v.f${i});`).join(" ")
+      : `printf(" %.7g", (double)v);`;
+    const bp = bufs.map((b) => `, const float* b_${b}`).join("");
+    const ba = bufs.map((b) => `, d_${b}`).join("");
+    const inits = bufs.map((b) => `
+__global__ void init_${b}(float* p, uint32_t n) { uint32_t j = blockIdx.x * blockDim.x + threadIdx.x; if (j < n) p[j] = ${cname(b + "_init")}(nullptr, j); }`).join("");
+    const alloc = bufs.map((b) => `
+  uint32_t n_${b} = 1u << ${cname(b + "_depth")}(nullptr); float* d_${b}; CK(cudaMalloc(&d_${b}, (size_t)n_${b} * 4));
+  init_${b}<<<(n_${b} + 255) / 256, 256>>>(d_${b}, n_${b});`).join("");
+    return `${commonKernels()}${inits}
+__global__ void k_${cn}(${retT}* out, uint32_t n, char* arena${bp}) {
+  uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x, stride = gridDim.x * blockDim.x;
+  for (uint32_t i = tid; i < n; i += stride) {
+    bg_arena ar; ar.cur = arena + (size_t)tid * BG_ARENA_BYTES;
+    out[i] = ${cn}(&ar, i${bufs.map((b) => `, b_${b}`).join("")});
+  }
+}
+
 int main(int argc, char** argv) {
   uint32_t n = argc > 1 ? (uint32_t)atoll(argv[1]) : 1024;
+  CK(cudaDeviceSetLimit(cudaLimitStackSize, (size_t)BG_STACK_KB * 1024));
+  char* arena; CK(cudaMalloc(&arena, (size_t)bg_res(n) * BG_ARENA_BYTES));
   ${retT}* d; CK(cudaMalloc(&d, (size_t)n * sizeof(${retT})));${alloc}
   CK(cudaDeviceSynchronize());
-  int blk = 256, grd = (int)((n + blk - 1) / blk);
-  k_${cn}<<<grd, blk>>>(d, n${ba}); CK(cudaDeviceSynchronize());
+  int blk = 256, grd = (int)((bg_res(n) + blk - 1) / blk);
+  k_${cn}<<<grd, blk>>>(d, n, arena${ba}); CK(cudaDeviceSynchronize());
   cudaEvent_t e0, e1; cudaEventCreate(&e0); cudaEventCreate(&e1);
   int reps = 5; cudaEventRecord(e0);
-  for (int r = 0; r < reps; r++) k_${cn}<<<grd, blk>>>(d, n${ba});
+  for (int r = 0; r < reps; r++) k_${cn}<<<grd, blk>>>(d, n, arena${ba});
   cudaEventRecord(e1); CK(cudaEventSynchronize(e1)); float ms; cudaEventElapsedTime(&ms, e0, e1);
   std::vector<${retT}> h(n); CK(cudaMemcpy(h.data(), d, (size_t)n * sizeof(${retT}), cudaMemcpyDeviceToHost));
   double sum = 0;
@@ -480,6 +581,7 @@ int main(int argc, char** argv) {
   return 0;
 }
 `;
+  }
 }
 
 // ------------------------------------------------------------------------------------------ CLI

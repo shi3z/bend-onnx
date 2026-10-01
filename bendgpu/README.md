@@ -32,6 +32,17 @@ body is a chain of `+h : B.Buf = B.Buf.map2(~s1, 5n, w1, x, 0)` lets becomes a h
 (`tests/pipe_mlp.bend`: `h = tanh(W1 x)` then `y = W2 h`, matches the stock runtime). Not done yet from the original
 plan: threads of a block cooperating through shared-memory tiles.
 
+**Milestone 3 (done): heap data structures.** Lists, trees and any multi-constructor or recursive ADT, including
+parametric ones (`List<&2, P>`: the type arguments are substituted into the constructor types). A record
+(single constructor, non-recursive) is a C struct held by value; every other ADT is a tagged node in a per-thread bump
+arena (`BG_ARENA_KB`, default 64 KB, reset for each item) held by pointer, with the single nullary constructor
+(`Nil`) as `nullptr`. Patterns work on a queue of pending values, so nested patterns
+(`case Con{P{a, b}, t}`) compile as they are lowered by the checker; non-tail recursion is a plain device call
+(`BG_STACK_KB`); constructors take their type from the expected type (the return type, a parameter type or a
+`{x : T}` annotation). Kernels run as a grid-stride loop over at most 16384 resident threads, each with its own
+arena. `tests/list.bend` (records in a list built by non-tail recursion, nested pattern fold) and `tests/tree.bend`
+(tree with data at the nodes) match the stock runtime.
+
 ```
 node --experimental-transform-types emit_cuda.mjs prog.bend kern > prog.cu
 nvcc -O3 -arch=sm_80 --fmad=false -o prog prog.cu && ./prog 4096
@@ -41,9 +52,9 @@ Anything outside the subset is rejected with the name of the construct (`unsuppo
 approximated.
 
 Tests (`tests/run_tests.py`): each program is compiled to CUDA and its outputs are compared, at 10 indices, with the
-stock `bend` runtime running the same source (buffers rebuilt there with `Buf.build`). All six pass: a counted
+stock `bend` runtime running the same source (buffers rebuilt there with `Buf.build`). All eight pass: a counted
 loop, nested records, a 200-step escape-time loop with `Bool.pick`, a dot product and a matrix-vector product through
-buffers, and a two-stage pipeline.
+buffers, a two-stage pipeline, a list of records and a tree.
 
 Measurements, same source:
 - 16-wide `T16` tile loop (`t_dot` chain, 4096 x 20000 iterations): ~6 ms on Bend's own GPU runtime, 1.9 ms here
@@ -63,6 +74,5 @@ node --version            # >= 22 (uses --experimental-transform-types)
 
 1. ~~Read-only buffers~~ (done, see above).
 2. ~~Parallel loops~~ (maps and pipelines done; shared-memory tile cooperation still open).
-3. **Heap-free data structures**: lists/trees of the subset in a per-thread arena, so records-of-lists programs
-   (the fused nanoGPT kernels in `nanogpt/fused_gen.py`) compile as they are.
+3. ~~Heap data structures~~ (done: per-thread arena).
 4. **Target**: the nanoGPT training step from `nanogpt/`, within a small factor of `nanogpt/cuda_ref/cuda_train.cu`.
