@@ -246,6 +246,56 @@ python3 src/onnx_compiler.py models/mini_resnet.onnx -o mini_resnet.bend
 
 ---
 
+## 🏋️ Training nanoGPT in Bend vs. PyTorch (CPU / CUDA)
+
+`nanogpt/train_lib.bend` adds **training** to the Bend nanoGPT: forward pass, a hand-written backward pass, and AdamW (weight decay 0), all in pure Bend. The model is the same 1-layer / 1-head / pre-LN / tied-embedding / tanh-GELU nanoGPT (C=16, 14 tokens). Gradients come from three matrix products (`A·Bᵀ`, `A·B`, `Aᵀ·B`). A batch is a balanced fork-join tree of 2^d samples whose gradients are summed on the way up. The tree is launched with `!`.
+
+### Correctness
+
+Same init (rounded to the same decimals), same data, same Adam hyper-parameters as PyTorch:
+
+| | step 0 | step 15 | step 29 |
+|---|---|---|---|
+| PyTorch loss | 3.466185 | 1.530063 | 0.468194 |
+| Bend loss | 3.466186 | 1.530064 | 0.468193 |
+
+Max |Δloss| over 30 steps is 1.3e-5, on Bend CPU and Bend GPU alike.
+
+### Speed (ms per training step, C=16, lower is better)
+
+NVIDIA A100 80GB, 24 CPU cores, Bend 2.0.34, PyTorch 2.11. B is the batch size. PyTorch times are after a 5-step warm-up; Bend times are the mean of the steps after the first.
+
+| B | PyTorch CUDA | PyTorch CPU | Bend CPU (24 threads) | Bend CPU (1 thread) | Bend GPU |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 0.74 | 0.88 | 4.7 | 5.0 | 1307 |
+| 4 | 0.87 | 0.81 | 5.7 | 19 | 2727 |
+| 16 | 0.88 | 1.8 | 8.0 | 80 | 2991 |
+| 64 | 0.77 | 1.1 | 28 | 351 | 3496 |
+| 256 | 0.98 | 1.7 | 138 | 1522 | 2854 |
+| 1024 | 1.16 | 6.7 | 597 | 6377 | 4133 |
+| 4096 | 3.19 | 18.3 | 2651 | 25661 | 5701 |
+
+**Takeaways**
+
+- **PyTorch CUDA is far faster.** At B=4096 Bend on 24 CPU threads is about 830x slower and Bend on the GPU about 1800x slower. At this size PyTorch is bound by kernel-launch overhead (~0.8 ms).
+- **Bend GPU time is almost flat in B.** A 4096x larger batch costs only 4.4x more time, so the parallelism works. A single GPU lane is very slow, though: one sample takes ~1.3 s on one lane versus ~5 ms on one CPU core. Bend only wins on the GPU when it runs about 16,384 samples at once (one per lane). That point was not measured.
+- **At B=4096 Bend GPU is still ~2x slower than Bend on 24 CPU threads.** The trend suggests a crossover somewhere around B of 10k-16k, but this was not measured.
+- **Caveats.** The "batch" repeats 4 phrases, so large B measures speed, not learning. Each point averages only a few steps, on one model size (C=16). Larger models were not benchmarked.
+
+### Notes
+
+- **GPU stack limit.** A GPU lane's continuation stack is only ~2k frames deep. Walking long vectors with `VCon{h, f(t)}` crashes with `memory fault (machine stack overflow?)`. The flat parameter and gradient vectors therefore use tail-recursive accumulate-and-reverse loops.
+- **Weight literals.** The initial weights are embedded as a balanced tree of short literals. A single 4.6k-deep literal overflows the compiler stack.
+- **Building with `!`.** This needs clang 19+ and CUDA 12 at `/usr/local/cuda`. Run with `./model --gpu on|off --threads N`.
+
+```bash
+export BEND_CLANG_BIN=/path/to/clang19/bin
+python3 nanogpt/bench_train.py verify --C 16 --depth 2 --steps 30 --gpu   # Bend vs PyTorch loss curves
+python3 nanogpt/bench_train.py bench  --C 16 --depths 0 2 4 6 8 10 12 --steps 4
+```
+
+---
+
 ## ⚙️ GPU Acceleration & Portability
 
 - **CUDA 12 Support**: When run natively on an NVIDIA GPU machine with `/usr/local/cuda`, Bend generates and launches a `.gpu` kernel targeting the GPU streaming multiprocessors.
