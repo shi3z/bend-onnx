@@ -248,13 +248,14 @@ python3 src/onnx_compiler.py models/mini_resnet.onnx -o mini_resnet.bend
 
 ## 🏋️ Training nanoGPT in Bend vs. PyTorch (CPU / CUDA)
 
-Training lives in three implementations of the same model (1-layer / 1-head / pre-LN / tied-embedding / tanh-GELU nanoGPT, C=16, 14 tokens): forward pass, a hand-written backward pass and AdamW (weight decay 0), all in pure Bend. They differ only in how a vector is laid out in the heap.
+Training lives in four implementations of the same model (1-layer / 1-head / pre-LN / tied-embedding / tanh-GELU nanoGPT, C=16, 14 tokens): forward pass, a hand-written backward pass and AdamW (weight decay 0), all in pure Bend. They differ only in how data is laid out in the heap and how much of it is kept in registers.
 
-- `nanogpt/train_tile.bend` + `tile3_gen.py` (**v3, default**): a matrix is one list whose cells hold the 16-wide tiles inline (`MC1{a, rest}`, `MC2{a, b, rest}`, `MC4{a, b, c, d, rest}`). Specialised for C=16 / F=64 / V=32 (widths 1 / 4 / 2) and generated from templates. The whole run is one `!` call.
-- `nanogpt/train_tile.bend` + `tile_gen.py` (v2, `BEND_IMPL=tile`): a row is a list of tiles inside a list of rows. Works for any multiple of 16.
+- `nanogpt/fused_gen.py` (**v4, default**, `BEND_IMPL=fused`): fused, register-resident token kernels. One flat function per stage handles a whole token with every intermediate `T16` tile in registers; only what the backward pass needs is stored, as records in per-token lists. Specialised for C=16 / F=64 / V=32.
+- `nanogpt/tile3_gen.py` (v3, `BEND_IMPL=tile3`): matrices as one list whose cells hold the tiles inline.
+- `nanogpt/tile_gen.py` + `train_tile.bend` (v2, `BEND_IMPL=tile`): a row is a list of tiles inside a list of rows; any multiple of 16.
 - `nanogpt/train_lib.bend` (v1, `BEND_IMPL=list`): cons lists of scalars.
 
-Every product is reduced to `A·Bᵀ`, with 16x16-block transposes for the other two. A batch is a balanced fork-join tree of 2^d samples whose gradient records are summed on the way up.
+A batch is a balanced fork-join tree of 2^d samples (one GPU lane per sample) whose gradient records are summed on the way up. The whole run is one `!` call.
 
 ### Correctness
 
@@ -265,65 +266,54 @@ Same init (rounded to the same decimals), same data, same Adam hyper-parameters 
 | PyTorch loss | 3.466185 | 1.530063 | 0.468194 |
 | Bend loss | 3.466186 | 1.530064 | 0.468193 |
 
-Max |Δloss| over 30 steps is 1.1e-5 (v3: 9.4e-6), on Bend CPU and Bend GPU alike.
+Max |Δloss| over 30 steps is 1.0e-5, on Bend CPU and Bend GPU alike, for v1 to v4.
 
 ### Speed (ms per training step, C=16, lower is better)
 
-NVIDIA A100 80GB (shared with other jobs), 24 CPU cores, Bend 2.0.34, PyTorch 2.11. B is the batch size. PyTorch times are after a 5-step warm-up. Bend times come from the difference between a 2-step and an 8-step run of the same binary; for Bend the minimum of 3 repeats is reported, because other jobs on the GPU slow some runs by up to 2x. The same shared GPU was in use while PyTorch was timed, so it does not explain the gap below.
+NVIDIA A100 80GB (shared with other jobs), 24 CPU cores, Bend 2.0.34, PyTorch 2.11 eager, fp32, TF32 off (PyTorch CPU used its default 16 threads, Bend CPU 24). B is the batch size. PyTorch times are after a 5-step warm-up. Bend times come from the difference between a 2-step and a 6-step run of the same binary; the minimum of 3 repeats is reported because other jobs on the GPU slow some runs by up to 2x (PyTorch ran on the same shared GPU).
 
 | B | PyTorch CUDA | PyTorch CPU | Bend CPU (24 threads) | Bend CPU (1 thread) | Bend GPU |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 0.75 | 0.89 | <0.1 | 0.17 | 37 |
-| 4 | 0.90 | 0.97 | 0.50 | 0.67 | 114 |
-| 16 | 0.89 | 1.04 | 0.50 | 2.7 | 129 |
-| 64 | 1.13 | 1.51 | 1.3 | 10 | 116 |
-| 256 | 0.86 | 3.0 | 4.8 | 42 | 89 |
-| 1024 | 1.17 | 5.1 | 18.5 | 169 | 157 |
-| 4096 | 3.19 | 21.9 | 59 | 663 | 224 |
-| 16384 | 8.83 | 103 | 276 | 2662 | 627 |
+| 1 | 0.81 | 0.68 | 0.25 | 0.25 | 33 |
+| 4 | 0.84 | 0.95 | 0.75 | 0.75 | 70 |
+| 16 | 0.89 | 0.82 | 0.50 | 2.0 | 93 |
+| 64 | 0.82 | 1.09 | 1.5 | 9.5 | 73 |
+| 256 | 0.91 | 1.81 | 4.8 | 36 | 77 |
+| 1024 | 1.17 | 6.8 | 16 | 151 | 123 |
+| 4096 | 3.19 | 18.7 | 65 | 602 | 161 |
+| 16384 | 8.82 | 97 | 231 | 2416 | 371 |
+| 65536 | 33.9 | 507 | 941 | 9639 | 453 |
 
-Progress at B=4096 (Bend CPU 24 threads / Bend GPU, ms): v1 cons lists 484 / 2718, v2 tile lists 107 / 275, v3 inline tiles 59 / 224. (An earlier v2 run measured 433 on GPU when another job was using the GPU.)
+Progress at B=4096 (Bend CPU 24 threads / Bend GPU, ms): v1 484 / 2718, v2 107 / 275, v3 59 / 224, v4 65 / 161. At B=65536: v3 ~1100 on GPU, v4 453 (2.1x faster than 24 CPU threads, and faster than PyTorch CPU at 507).
 
 **Takeaways**
 
-- **Bend on 24 CPU threads beats PyTorch CPU up to B=64 and is ahead of PyTorch CUDA at B=1 to 16.** By B=256 PyTorch CPU is faster, and PyTorch CUDA is faster from B=64.
-- **PyTorch CUDA is still far faster at large batch.** At B=4096 Bend CPU (24 threads) is ~19x slower and Bend GPU ~70x slower than PyTorch CUDA.
-- **Bend GPU is slower than Bend CPU at every B up to 256, and about 3.8x slower at B=4096.** It crosses below Bend on 1 CPU thread from B=1024, and its time grows slowly with B, but the lanes never beat 24 cores in what we measured.
-- **Caveats.** The "batch" repeats 4 phrases, so large B measures speed, not learning. One model size (C=16); v3 is specialised to it. Each point is a handful of steps.
+- **Bend on 24 CPU threads is ahead of PyTorch up to B=16** (both CPU and CUDA, which are launch-bound at ~0.8 ms), roughly on par to B=64, and behind from B=256.
+- **Bend GPU beats Bend on 24 CPU threads only at very large batches**: it loses up to B=16384 (371 vs 231 ms) and wins at B=65536 (453 vs 941 ms, 2.1x), because its marginal cost per sample (~2.8 us) is about 7x lower than the CPU's (~20 us) while its fixed latency (~30-40 ms) is high. At B=65536 it is also slightly ahead of PyTorch on 16 CPU threads (453 vs 507 ms).
+- **PyTorch CUDA is still faster**: ~50x at B=4096 (161 vs 3.2 ms) and ~13x at B=65536 (453 vs 33.9 ms). PyTorch's per-sample cost at saturation is ~0.5 us; Bend GPU's is ~2.8 us (5.6x).
+- **Caveats.** The "batch" repeats 4 phrases, so large B measures speed, not learning. One model size (C=16); v3/v4 are specialised to it. A handful of steps per point.
 
-### Why Bend's GPU is slow here (measured, not guessed)
+### Why Bend's GPU was slow, and what fixed it (measured)
 
-`!` lets Bend reach about **300 GFLOP/s on the GPU in a register-only loop**, which is the same order as PyTorch's effective throughput on this tiny model (~420 GFLOP/s at B=4096). So the gap is not the arithmetic, it is how the data is held. Micro-benchmarks on 4096 lanes, same total work:
+The earlier conclusion in this README, that matching PyTorch needs "dense arrays in the language", was too strong and is withdrawn. The gap came from how my code used the heap, not from a hard limit.
 
-| Experiment | GPU | CPU (24 thr) |
+| Experiment (4096-65536 independent lanes) | GPU | CPU (24 thr) |
 |---|---:|---:|
-| register-only loop, 262M iterations | 10 ms | 23 ms |
-| dot products over two 64-element lists (fits in L2) | 34 ms | 49 ms |
-| the same work, lists of 512 / 4096 / 32768 elements per lane | 61 / 151 / 440 ms | 23 / 28 / 61 ms |
-| the same work, as 16-wide tiles instead of lists (2048 tiles per lane) | 125 ms | 32 ms |
+| tile arithmetic whose operands stay in registers (flat tail loop) | ~13 G tile-ops/s | ~6 G tile-ops/s |
+| the same 16-wide op where every result is a heap list cell (`mat_scale`, v3, double allocation from accumulate+reverse) | 0.7 G/s | 3.0 G/s |
+| one flat function doing the whole tail of the model for one token (LN, fc, GELU, proj, LN, logits, softmax, loss; ~160 tile dots) | **42 M tokens/s at 1M tokens (75 M/s marginal)** | 8.7 M tokens/s |
 
-- **A cons list costs one heap cell and one dependent load per element.** A GPU lane has one load in flight, so once the per-lane working set leaves L2 the run turns into DRAM-latency pointer chasing: up to 18x slower at the same operation count, while the CPU barely notices.
-- **Bend has no dense array type.** `Array` is a binary tree of nodes, so there is no contiguous tensor, no cuBLAS and no tensor-core path.
-- **The fix that worked is a 16-field constructor (`T16`).** One load brings in 16 values, the dot product is straight-line code, and a matmul produces 16 output columns per node. That is v2.
-- **What did not matter (each measured):** parameter refcount contention (private per-branch copies changed nothing), refcount cost itself (a shared tile read in a loop runs at ~300 GMAC/s), control-flow divergence between samples (identical samples were only 20% faster), and the gradient tree reduction (12-20% of a GPU step). Fixed-size structs of 16 tiles (instead of lists) did not beat the list version.
-- **What did matter and was fixed in v3:** a row stored as a list of tiles inside a list of rows costs three dependent loads. With the rows inline in the list cells the same 14x16 @ 16x16ᵀ product is ~6x faster on GPU in isolation, but only 1.3-1.7x faster end to end, because the rest of the step (transposes, LayerNorm, softmax, allocation of every intermediate) has the same kind of overhead.
-- **Hard limits of the GPU runtime found on the way.** (1) A lane's continuation stack is only ~360 words: a non-tail recursion over 16 rows of 4-tile cells, or 64 rows of 1-tile cells, crashes with `memory fault (machine stack overflow?)`. Every row loop is therefore an accumulate-and-reverse tail loop. (2) A function may bind at most 247 values: small non-recursive multi-branch helpers get inlined into their callers and break this limit, so some helpers are deliberately written recursively.
-- **What is left:** at B=4096 the per-sample forward/backward on a lane takes ~180 ms of the ~225 ms GPU step. Under full load a lane is much slower than the same sample alone, consistent with a memory-system limit on the heap, which source-level changes cannot remove.
+- **Register-resident code is where Bend's GPU is fast.** A single fused token function ran 4.8x faster than 24 CPU cores (8x marginal), about 450 GFLOP/s, the same order as PyTorch's effective throughput on this model. Anything that goes through list cells, matrices or non-tail calls becomes 17-word heap nodes and is slower on the GPU than on the CPU. (The "19x" register-vs-heap ratio quoted earlier mixed in the doubled allocation of my accumulate-and-reverse loops; the per-allocation gap is smaller, but the end-to-end effect is real.)
+- **v4 applies that to the whole step.** It was written after these measurements. Its first end-to-end run already matched PyTorch; at saturation (B=65536) it reaches ~350k samples/s, 7x the CPU's per-sample rate.
+- **Not the cause (each measured):** the launch size (I patched the generated runtime to launch 4x the threads, 65536 instead of 16384: no change, at B=4096 and at B=65536), refcounting (a shared tile read in a loop runs at ~300 GMAC/s), control-flow divergence (identical samples: only 20% faster), the dot product itself, and the gradient tree reduction on its own.
+- **What still limits v4.** At B <= 4096 only B lanes have work, so the step time is the latency of one sample's sequential chain (~29 ms on one lane) plus ~13 ms of per-step serial work (`make_q`, Adam), not throughput. Forking inside the sample (parallel `let` over the 20 gradient fields or over `g_add`) made it slower (B=4096: 160 to 278-349 ms) because each fork/join costs a kernel iteration; only the parallel Adam is kept (`BEND_PAR=4`). At saturation the weight-gradient loops (~45% of the sample) and the per-stage record lists (~30 heap nodes per token) dominate.
+- **No GPU performance counters were available** (`ERR_NVGPUCTRPERM`), so the memory-system explanation for the remaining gap is inferred from working-set experiments, not read from counters.
 
-**The root cause, isolated with controlled experiments (A100, 65536 independent samples/lanes):**
+### Hard limits of the GPU runtime found on the way
 
-| What is measured | GPU | CPU (24 threads) |
-|---|---:|---:|
-| 16-wide tile ops whose operands stay in registers (flat tail loop, no heap) | ~13 G tile-ops/s | ~6 G tile-ops/s |
-| the same 16-wide op, but every result is a heap node (`mat_scale`, <=64 tiles live per lane) | 0.7 G tile-ops/s | 3.0 G tile-ops/s |
-| the same, with >=256 tiles live per lane (working set far beyond L2) | 0.25-0.3 G tile-ops/s | 1.3-2 G tile-ops/s |
-
-- **A register-resident tile op is ~19x faster than a heap-resident one on the GPU, while the CPU only loses 2x.** Bend keeps a `T16` in registers only inside flat tail-recursive loops. Anything that returns it through a list cell, a matrix or a non-tail call becomes a 17-word heap node: one uncoalesced store per word, a free later, and a cache line per access. That is what every list/matrix operation in the training step does.
-- **It is not the launch size.** I patched the generated runtime to launch 4x as many threads (65536 instead of 16384, which the runtime derives from the L2 size, capped at 128 blocks of 128). At B=65536 the step time was unchanged (1.10 s vs 1.08 s per step). I also patched it at B=4096 (no change), so occupancy is not the limit.
-- **It is not refcounting or divergence** (see above), and **not the dot product**: 6.5 G tile-dots/s are reached when the weights are read from the heap but the result stays in a register.
-- **Ceiling with this design.** If every matmul output were produced as one tile per 16 dots and every elementwise chain (LayerNorm, GELU, softmax) were fused into a single flat function, the number of heap nodes per sample would drop several-fold. My estimate is 4-8x on the GPU, i.e. roughly 30-60 ms per step at B=4096, still 10-20x from PyTorch CUDA. Getting to PyTorch needs dense arrays or shared-memory tiles in the language, which Bend does not have.
-
-**Bottom line:** matching PyTorch CUDA for dense matmuls would need either dense arrays in Bend or a way to keep operands in registers across a whole layer. With the current runtime, the achievable target for Bend GPU is parity with Bend on a multicore CPU, which is not reached yet.
+- A lane's continuation stack is only ~360 words. Any non-tail recursion that holds a `T16` (16 words) or an `MC4` cell per level overflows it after ~14-16 levels (`memory fault (machine stack overflow?)`). Every list loop is therefore an accumulate-and-reverse tail loop, or builds records that hold only pointers.
+- A function may bind at most 247 values (registers). Several functions had to be split (for example one expression producing two `T16` results, or a record with 20 field expressions), and small non-recursive multi-branch helpers are inlined into callers and can break the limit.
+- `CUBE_LOG` (threads launched) comes from the L2 size and is capped at 128 blocks of 128 threads.
 
 ### Optimizations
 
@@ -333,9 +323,10 @@ What worked:
 
 - **16-wide tiles (v2).** About 5-10x on every backend (numbers above). All vectors are lists of `T16`; the tile primitives are generated by `nanogpt/tile_gen.py`.
 - **Tiles inline in the list cells (v3).** A further 1.2-1.8x (`nanogpt/tile3_gen.py`).
+- **Fused register-resident token kernels (v4).** Per stage one flat function with all intermediates in registers, records only for what the backward pass needs, and weight gradients as register accumulators over the tokens (four rows per pass, static lanes). B=4096: GPU 224 to 161 ms; B=65536: GPU ~1100 to 453 ms (`nanogpt/fused_gen.py`).
 - **Dot-product-only matmuls.** `A·B` and `Aᵀ·B` are transposes plus the allocation-free `A·Bᵀ` loop, instead of axpy loops that allocate two lists per scalar (~2.9x single-threaded on v1).
 - **Row-parallel matmuls (`fork_depth`).** Rows of `A` are split in halves 2^d times so one sample no longer sits on a single slow GPU lane (GPU B=16: 1785 ms to 425 ms on v1). 4 or 5 is best on GPU; on CPU it only adds overhead, so CPU runs use 0.
-- **Tail-recursive row loops** (accumulate and reverse): 1.6x single-threaded on v1, and required on GPU, where a lane's continuation stack is only ~2k frames deep.
+- **Tail-recursive loops** (accumulate and reverse): 1.6x single-threaded on v1, and required on GPU, where a lane's continuation stack is only ~360 words.
 - **Parameters, gradients and Adam state kept as tile records** (no flat scalar vectors inside the loop), and the whole training loop run as a single `!` call, so there are no host round-trips per step.
 
 What did not help, and was reverted or left out:
@@ -344,10 +335,12 @@ What did not help, and was reverted or left out:
 - 1x4 register-blocked dot products (~2x slower).
 - Flat versions of the elementwise vector ops (no gain).
 - Running the flat-list Adam inside the GPU call (110 ms per step on one lane): this is why the state is kept as tiles.
+- Fixed-size structs of 16 tiles instead of lists (same speed as the list version).
+- Parallel `let` over the gradient fields inside each sample, or inside `g_add` (slower: B=4096 160 to 278-349 ms; each fork/join costs a kernel iteration). Only the parallel Adam is kept.
 
 ### Notes
 
-- **GPU stack limit.** A GPU lane's continuation stack is only ~2k frames deep. Walking long vectors with `VCon{h, f(t)}` crashes with `memory fault (machine stack overflow?)`. The flat parameter and gradient vectors therefore use tail-recursive accumulate-and-reverse loops.
+- **GPU stack limit.** A GPU lane's continuation stack is only ~360 words (see above). Anything that walks a long list while holding a tile uses tail-recursive accumulate-and-reverse loops.
 - **Weight literals.** The initial weights are embedded as a balanced tree of short literals. A single 4.6k-deep literal overflows the compiler stack.
 - **Building with `!`.** This needs clang 19+ and CUDA 12 at `/usr/local/cuda`. Run with `./model --gpu on|off --threads N`.
 
