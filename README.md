@@ -310,6 +310,19 @@ Progress at B=4096 (Bend CPU 24 threads / Bend GPU, ms): v1 cons lists 484 / 271
 - **Hard limits of the GPU runtime found on the way.** (1) A lane's continuation stack is only ~360 words: a non-tail recursion over 16 rows of 4-tile cells, or 64 rows of 1-tile cells, crashes with `memory fault (machine stack overflow?)`. Every row loop is therefore an accumulate-and-reverse tail loop. (2) A function may bind at most 247 values: small non-recursive multi-branch helpers get inlined into their callers and break this limit, so some helpers are deliberately written recursively.
 - **What is left:** at B=4096 the per-sample forward/backward on a lane takes ~180 ms of the ~225 ms GPU step. Under full load a lane is much slower than the same sample alone, consistent with a memory-system limit on the heap, which source-level changes cannot remove.
 
+**The root cause, isolated with controlled experiments (A100, 65536 independent samples/lanes):**
+
+| What is measured | GPU | CPU (24 threads) |
+|---|---:|---:|
+| 16-wide tile ops whose operands stay in registers (flat tail loop, no heap) | ~13 G tile-ops/s | ~6 G tile-ops/s |
+| the same 16-wide op, but every result is a heap node (`mat_scale`, <=64 tiles live per lane) | 0.7 G tile-ops/s | 3.0 G tile-ops/s |
+| the same, with >=256 tiles live per lane (working set far beyond L2) | 0.25-0.3 G tile-ops/s | 1.3-2 G tile-ops/s |
+
+- **A register-resident tile op is ~19x faster than a heap-resident one on the GPU, while the CPU only loses 2x.** Bend keeps a `T16` in registers only inside flat tail-recursive loops. Anything that returns it through a list cell, a matrix or a non-tail call becomes a 17-word heap node: one uncoalesced store per word, a free later, and a cache line per access. That is what every list/matrix operation in the training step does.
+- **It is not the launch size.** I patched the generated runtime to launch 4x as many threads (65536 instead of 16384, which the runtime derives from the L2 size, capped at 128 blocks of 128). At B=65536 the step time was unchanged (1.10 s vs 1.08 s per step). I also patched it at B=4096 (no change), so occupancy is not the limit.
+- **It is not refcounting or divergence** (see above), and **not the dot product**: 6.5 G tile-dots/s are reached when the weights are read from the heap but the result stays in a register.
+- **Ceiling with this design.** If every matmul output were produced as one tile per 16 dots and every elementwise chain (LayerNorm, GELU, softmax) were fused into a single flat function, the number of heap nodes per sample would drop several-fold. My estimate is 4-8x on the GPU, i.e. roughly 30-60 ms per step at B=4096, still 10-20x from PyTorch CUDA. Getting to PyTorch needs dense arrays or shared-memory tiles in the language, which Bend does not have.
+
 **Bottom line:** matching PyTorch CUDA for dense matmuls would need either dense arrays in Bend or a way to keep operands in registers across a whole layer. With the current runtime, the achievable target for Bend GPU is parity with Bend on a multicore CPU, which is not reached yet.
 
 ### Optimizations
