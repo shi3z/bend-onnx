@@ -10,25 +10,38 @@ not the language: code that stays in registers runs at hardware speed even there
 for programs that fit a first-order numeric subset: they become plain CUDA (registers, loops, structs),
 launched as a parallel map over an index range.
 
-## Status: first slice
+## Status
+
+**Milestone 0 (done): scalars, records, loops.** `U32 F32 Bool Nat` (Nat as a counter); single-constructor records
+of scalars/records (C structs); `match` on Bool, Nat and records; tail self-calls (become `for(;;)` loops); calls
+between subset defs; the Base primitives (arithmetic, comparisons, `Bool.pick`, `F32.exp/log/tanh/...`) mapped by name.
+
+**Milestone 1 (done): read-only buffers.** `prelude/buf.bend` defines `Buf`, a perfect binary tree of `F32` that is
+`Data` (shareable by every thread; Base's `Array` is affine and cannot be read by many lanes), and
+`Buf.get(d, b, i)`. It is ordinary Bend, so it type-checks and runs on the stock runtime, which is the reference
+semantics; the back end compiles a `Buf` to a device pointer and `get` to one load. An entry
+`def kern(+i: U32, +w: B.Buf, +x: B.Buf) -> value` takes its buffers from the program itself: for each buffer
+parameter `w` the file defines `w_depth() -> Nat` (the buffer holds 2^depth values) and
+`w_init(j: U32) -> F32` (element j; `j` used once). The generated host code fills the buffers with an init kernel.
 
 ```
 node --experimental-transform-types emit_cuda.mjs prog.bend kern > prog.cu
 nvcc -O3 -arch=sm_80 --fmad=false -o prog prog.cu && ./prog 4096
 ```
 
-Supported: `U32 F32 Bool Nat` (Nat as a counter); single-constructor records of scalars/records (C structs);
-`match` on Bool, Nat and records; tail self-calls (become `for(;;)` loops); calls between subset defs; the Base
-primitives (arithmetic, comparisons, `Bool.pick`, `F32.exp/log/tanh/...`) mapped by name; the entry
-`def kern(i: U32) -> scalar|record` becomes a kernel over `i in [0, N)`. Anything else is rejected with the name
-of the construct (`unsupported in <def>: ...`), never silently approximated.
+Anything outside the subset is rejected with the name of the construct (`unsupported in <def>: ...`), never silently
+approximated.
 
-Tests (`tests/run_tests.py`): each program is compiled to CUDA and its outputs are compared, at 10 indices,
-with the output of the stock `bend` runtime on the same source. All pass (a 200-step escape-time loop with `Bool.pick`
-and Nat fuel, nested records, a counted loop).
+Tests (`tests/run_tests.py`): each program is compiled to CUDA and its outputs are compared, at 10 indices, with the
+stock `bend` runtime running the same source (buffers rebuilt there with `Buf.build`). All five pass: a counted
+loop, nested records, a 200-step escape-time loop with `Bool.pick`, a dot product and a matrix-vector product through
+buffers.
 
-First measurement, same source: the 16-wide `T16` tile loop (`t_dot` chain) that runs on Bend's own GPU runtime at
-~6 ms for 4096 x 20000 iterations takes 1.9 ms here (`T16` becomes a 16-float struct in registers, `Nat` a counter).
+Measurements, same source:
+- 16-wide `T16` tile loop (`t_dot` chain, 4096 x 20000 iterations): ~6 ms on Bend's own GPU runtime, 1.9 ms here
+  (`T16` is a 16-float struct in registers, `Nat` a counter).
+- `bench/matvec.bend` (4096 x 16 weights read through `Buf.get`, 65536 threads, one row each): 229 ms on Bend's GPU
+  runtime (257 ms on 24 CPU threads, where `Buf.get` walks a depth-16 tree per element), **0.008 ms** here, same sum.
 
 ## Setup
 
@@ -40,7 +53,7 @@ node --version            # >= 22 (uses --experimental-transform-types)
 
 ## Roadmap (each step is a measurable milestone)
 
-1. **Read-only buffers**: a shareable (`Data`) flat array type, `get` compiled to a global/shared load. Needed for weights.
+1. ~~Read-only buffers~~ (done, see above).
 2. **Parallel loops**: `!` on a def over an index range becomes a grid-level loop instead of a fork tree; threads
    cooperate through shared-memory tiles.
 3. **Heap-free data structures**: lists/trees of the subset in a per-thread arena, so records-of-lists programs

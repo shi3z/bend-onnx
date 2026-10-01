@@ -19,6 +19,14 @@ def kern_type(src):
     return m.group(1)
 
 
+def kern_bufs(src):
+    """names of the Buf parameters of kern (after the index) and the alias the file gave buf.bend"""
+    sig = re.search(r"def kern\(([^)]*)\)", src).group(1)
+    names = [re.sub(r"^\+", "", p.split(":")[0].strip()) for p in sig.split(",")][1:]
+    alias = re.search(r"import\s+\S*buf\.bend\s+as\s+(\w+)", src)
+    return names, (alias.group(1) if alias else None)
+
+
 def run(cmd, **kw):
     return subprocess.run(cmd, capture_output=True, text=True, env=env, **kw)
 
@@ -42,10 +50,14 @@ for f in sorted(glob.glob(os.path.join(HERE, "*.bend"))):
         ref = {}
         idx = [0, 1, 2, 3, 1000, 1500, 2000, 2047, 3000, 4095]
         shown = "F32.show" if ty == "F32" else "U32.show"
-        main = "\ndef main() -> IO(Unit):\n  do IO<Unit>:\n" + "".join(f"    IO.print({shown}(kern({i})))\n" for i in idx)
-        rf = os.path.join(d, name + "_ref.bend")
+        names, alias = kern_bufs(src)
+        binds = "".join(f"    +{n} : {alias}.Buf = {alias}.Buf.build(~{n}_init, {n}_depth(), 0)\n" for n in names)
+        args = "".join(f", {n}" for n in names)
+        main = "\ndef main() -> IO(Unit):\n  do IO<Unit>:\n" + binds + "".join(f"    IO.print({shown}(kern({i}{args})))\n" for i in idx)
+        rf = os.path.join(HERE, "_ref_" + name + ".bend")   # next to the test so ../prelude resolves
         open(rf, "w").write(src + main)
         rr = run([BEND, rf])
+        os.remove(rf)
         vals = [float(x) for x in rr.stdout.split()] if rr.returncode == 0 else []
         ok = len(vals) == len(idx) and all(abs(v - got.get(i, float("nan"))) <= 1e-6 * max(1.0, abs(v)) for i, v in zip(idx, vals))
         print(("ok  " if ok else "FAIL"), name, "cuda", [got.get(i) for i in idx][:6], "bend", vals[:6],
