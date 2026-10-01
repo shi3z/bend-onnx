@@ -272,19 +272,21 @@ Max |Δloss| over 30 steps is 1.0e-5, on Bend CPU and Bend GPU alike, for v1 to 
 
 NVIDIA A100 80GB (shared with other jobs), 24 CPU cores, Bend 2.0.34, PyTorch 2.11 eager, fp32, TF32 off (PyTorch CPU used its default 16 threads, Bend CPU 24). B is the batch size. PyTorch times are after a 5-step warm-up. Bend times come from the difference between a 2-step and a 6-step run of the same binary; the minimum of 3 repeats is reported because other jobs on the GPU slow some runs by up to 2x (PyTorch ran on the same shared GPU).
 
-| B | PyTorch CUDA | PyTorch CPU | Bend CPU (24 threads) | Bend CPU (1 thread) | Bend GPU |
-|---:|---:|---:|---:|---:|---:|
-| 1 | 0.81 | 0.68 | 0.25 | 0.25 | 33 |
-| 4 | 0.84 | 0.95 | 0.75 | 0.75 | 70 |
-| 16 | 0.89 | 0.82 | 0.50 | 2.0 | 93 |
-| 64 | 0.82 | 1.09 | 1.5 | 9.5 | 73 |
-| 256 | 0.91 | 1.81 | 4.8 | 36 | 77 |
-| 1024 | 1.17 | 6.8 | 16 | 151 | 123 |
-| 4096 | 3.19 | 18.7 | 65 | 602 | 161 |
-| 16384 | 8.82 | 97 | 231 | 2416 | 371 |
-| 65536 | 33.9 | 507 | 941 | 9639 | 453 |
+| B | hand-written CUDA | PyTorch CUDA | PyTorch CPU | Bend CPU (24 threads) | Bend CPU (1 thread) | Bend GPU |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 0.040 | 0.81 | 0.68 | 0.25 | 0.25 | 33 |
+| 4 | 0.041 | 0.84 | 0.95 | 0.75 | 0.75 | 70 |
+| 16 | 0.041 | 0.89 | 0.82 | 0.50 | 2.0 | 93 |
+| 64 | 0.044 | 0.82 | 1.09 | 1.5 | 9.5 | 73 |
+| 256 | 0.094 | 0.91 | 1.81 | 4.8 | 36 | 77 |
+| 1024 | 0.28 | 1.17 | 6.8 | 16 | 151 | 123 |
+| 4096 | 0.95 | 3.19 | 18.7 | 65 | 602 | 161 |
+| 16384 | 3.7 | 8.82 | 97 | 231 | 2416 | 371 |
+| 65536 | 14.8 | 33.9 | 507 | 941 | 9639 | 453 |
 
 Progress at B=4096 (Bend CPU 24 threads / Bend GPU, ms): v1 484 / 2718, v2 107 / 275, v3 59 / 224, v4 65 / 161. At B=65536: v3 ~1100 on GPU, v4 453 (2.1x faster than 24 CPU threads, and faster than PyTorch CPU at 507).
+
+**Reference: hand-written CUDA** (`nanogpt/cuda_ref/cuda_train.cu`, run with `python3 nanogpt/cuda_ref/run.py`): the same step, same math and init, written directly in CUDA C++ (no cuBLAS; one block per few samples, activations in shared memory, per-block partial gradients summed by an Adam kernel). Its loss curve matches PyTorch to 1.1e-5. It is not tuned further; it only measures what the hardware does for this step: 0.95 ms at B=4096 and 14.8 ms at B=65536 (59 ms at B=262144), i.e. 3.4x / 2.3x faster than PyTorch eager, and **170x / 30x faster than Bend GPU (v4)**. Marginal cost per sample at saturation: ~0.23 us (CUDA) vs ~0.5 us (PyTorch) vs ~2.8 us (Bend GPU).
 
 **Takeaways**
 
