@@ -24,6 +24,14 @@ semantics; the back end compiles a `Buf` to a device pointer and `get` to one lo
 parameter `w` the file defines `w_depth() -> Nat` (the buffer holds 2^depth values) and
 `w_init(j: U32) -> F32` (element j; `j` used once). The generated host code fills the buffers with an init kernel.
 
+**Milestone 2 (done, first half): parallel maps and device pipelines.** `Buf.map1..4(~f, d, bufs.., 0)` (in
+`prelude/buf.bend`, plain Bend: a fork tree on the stock runtime) is the parallel loop: element i of the result is
+`f(i, bufs..)`, for i in [0, 2^d). The back end turns each call into one kernel launch and keeps the result in device
+memory for the next stage. An entry def from buffers to a buffer (`def pipe(+w1: B.Buf, +x: B.Buf, ..) -> B.Buf`) whose
+body is a chain of `+h : B.Buf = B.Buf.map2(~s1, 5n, w1, x, 0)` lets becomes a host program that launches them in order
+(`tests/pipe_mlp.bend`: `h = tanh(W1 x)` then `y = W2 h`, matches the stock runtime). Not done yet from the original
+plan: threads of a block cooperating through shared-memory tiles.
+
 ```
 node --experimental-transform-types emit_cuda.mjs prog.bend kern > prog.cu
 nvcc -O3 -arch=sm_80 --fmad=false -o prog prog.cu && ./prog 4096
@@ -33,9 +41,9 @@ Anything outside the subset is rejected with the name of the construct (`unsuppo
 approximated.
 
 Tests (`tests/run_tests.py`): each program is compiled to CUDA and its outputs are compared, at 10 indices, with the
-stock `bend` runtime running the same source (buffers rebuilt there with `Buf.build`). All five pass: a counted
+stock `bend` runtime running the same source (buffers rebuilt there with `Buf.build`). All six pass: a counted
 loop, nested records, a 200-step escape-time loop with `Bool.pick`, a dot product and a matrix-vector product through
-buffers.
+buffers, and a two-stage pipeline.
 
 Measurements, same source:
 - 16-wide `T16` tile loop (`t_dot` chain, 4096 x 20000 iterations): ~6 ms on Bend's own GPU runtime, 1.9 ms here
@@ -54,8 +62,7 @@ node --version            # >= 22 (uses --experimental-transform-types)
 ## Roadmap (each step is a measurable milestone)
 
 1. ~~Read-only buffers~~ (done, see above).
-2. **Parallel loops**: `!` on a def over an index range becomes a grid-level loop instead of a fork tree; threads
-   cooperate through shared-memory tiles.
+2. ~~Parallel loops~~ (maps and pipelines done; shared-memory tile cooperation still open).
 3. **Heap-free data structures**: lists/trees of the subset in a per-thread arena, so records-of-lists programs
    (the fused nanoGPT kernels in `nanogpt/fused_gen.py`) compile as they are.
 4. **Target**: the nanoGPT training step from `nanogpt/`, within a small factor of `nanogpt/cuda_ref/cuda_train.cu`.
