@@ -15,6 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
 from nanogpt.model import GPT, GPTConfig
+from nanogpt import tile_gen
 
 BEND = "/home/shi3z/snap/antigravity-cli/common/.bend/bin/bend"
 CLANG_BIN = os.environ.get("BEND_CLANG_BIN", "")
@@ -29,6 +30,7 @@ Y = [enc(p)[1:] for p in PHRASES]
 T = len(X[0])
 
 LR, B1, B2, EPS = 0.01, 0.9, 0.999, 1e-8
+COPY = os.environ.get('BEND_COPY', 'none')  # parameter copy mode: none | node | leaf
 FORK = int(os.environ.get('BEND_FORK', '3'))  # row-parallel split depth inside each sample
 
 
@@ -74,7 +76,7 @@ def f32lit(v):
     return f"F32.neg({s})" if v < 0 else s
 
 
-def vec_lit(vals, chunk=32):
+def vec_lit(vals, chunk=32, cat="vec_concat"):
     """Weights as a balanced concat tree of short literals (a single 4.6k-deep literal overflows the compiler stack)."""
     def small(vs):
         res = "VNil{}"
@@ -86,7 +88,7 @@ def vec_lit(vals, chunk=32):
         if len(parts) == 1:
             return parts[0]
         mid = len(parts) // 2
-        return f"vec_concat({tree(parts[:mid])}, {tree(parts[mid:])})"
+        return f"{cat}({tree(parts[:mid])}, {tree(parts[mid:])})"
 
     return tree([small(vals[i:i + chunk]) for i in range(0, len(vals), chunk)])
 
@@ -195,6 +197,159 @@ def adam_eps() -> F32:
     return f"{matrix}\n\n{header}\n\n{pre}\n{gen}\n{post}"
 
 
+
+# ------------------------------------------------------------------ Bend source (v2: 16-wide tiles)
+def gen_bend_tile(C, depth, steps, print_every, flat, fork=None):
+    assert C % 16 == 0 and T <= 16 and V % 16 == 0
+    fork = FORK if fork is None else fork
+    F = 4 * C
+    Ct, Ft, Vt = C // 16, F // 16, V // 16
+    B = 2 ** depth
+    sizes = field_sizes(C)
+    nparam = sum(s for _, s in sizes)
+    assert nparam == len(flat)
+    consts = [f"def nV() -> Nat:\n  {V}n", f"def nT32() -> U32:\n  {T}", f"def nC() -> Nat:\n  {C}n",
+              f"def nCt() -> Nat:\n  {Ct}n", f"def nFt() -> Nat:\n  {Ft}n", f"def nVt() -> Nat:\n  {Vt}n",
+              f"def fork_depth() -> Nat:\n  {fork}n", f"def fscale() -> F32:\n  {f32lit(1/math.sqrt(C))}",
+              f"def inv_c() -> F32:\n  {f32lit(1.0 / C)}"]
+    for n, sz in sizes:
+        consts.append(f"def sz_{n}() -> Nat:\n  {sz}n")
+    header = "\n\n".join(consts)
+
+    # field -> (kind, rows, tiles)
+    spec = {"wte": ("m", V, Ct), "wpe": ("m", T, Ct), "ln1g": ("v", 0, Ct), "ln1b": ("v", 0, Ct),
+            "wq": ("m", C, Ct), "bq": ("v", 0, Ct), "wk": ("m", C, Ct), "bk": ("v", 0, Ct),
+            "wv": ("m", C, Ct), "bv": ("v", 0, Ct), "wo": ("m", C, Ct), "bo": ("v", 0, Ct),
+            "ln2g": ("v", 0, Ct), "ln2b": ("v", 0, Ct), "wfc": ("m", F, Ct), "bfc": ("v", 0, Ft),
+            "wmp": ("m", C, Ft), "bmp": ("v", 0, Ct), "lnfg": ("v", 0, Ct), "lnfb": ("v", 0, Ct)}
+    names = [n for n, _ in sizes]
+
+    # flat scalars -> G (once, at the start of a run)
+    lines = ["def g_of_flat(+f: Vec) -> G:"]
+    rest = "f"
+    for i, (n, sz) in enumerate(sizes):
+        kind, r, wt = spec[n]
+        piece = f"vtake(sz_{n}(), {rest})"
+        if kind == "m":
+            lines.append(f"  +{n} : Mat = mat_of({r}n, {wt}n, {16 * wt}n, {piece})")
+        else:
+            lines.append(f"  +{n} : TV = tv_of({wt}n, {piece})")
+        if i < len(sizes) - 1:
+            lines.append(f"  +rest{i} : Vec = vdrop(sz_{n}(), {rest})")
+            rest = f"rest{i}"
+    lines.append("  G{0.0, " + ", ".join(names) + "}")
+    unflat = "\n".join(lines)
+
+    # G -> P : the sample code also needs transposed weight copies (built once per step)
+    tr = [("wte", Ct), ("wq", Ct), ("wk", Ct), ("wv", Ct), ("wo", Ct), ("wfc", Ct), ("wmp", Ft)]
+    mk = ["def make_p(p: G) -> P:", "  match p:", "    case G{_, " + ", ".join(f"+{n}" for n in names) + "}:"]
+    for n, wt in tr:
+        mk.append(f"      +{n}T : Mat = mat_t({n}, {wt}n)")
+    mk.append("      P{" + ", ".join(names) + ", wteT, wqT, wkT, wvT, woT, wfcT, wmpT}")
+    unflat += "\n\n" + "\n".join(mk)
+
+    # gradient sum and Adam, field-wise
+    pa = ", ".join(f"a_{n}" for n in names)
+    pb = ", ".join(f"b_{n}" for n in names)
+    adds = ", ".join(f"{'mat_add' if spec[n][0] == 'm' else 'tv_add'}(a_{n}, b_{n})" for n in names)
+    gadd = f"""def g_add(a: G, b: G) -> G:
+  match a b:
+    case G{{a_loss, {pa}}} G{{b_loss, {pb}}}:
+      G{{(a_loss + b_loss : F32), {adds}}}
+
+def g_loss(g: G) -> F32:
+  match g:
+    case G{{l, {", ".join("_" for _ in names)}}}:
+      l
+"""
+
+    def gmap(fname, params, sig, nargs):
+        ks = "abc"[:nargs]
+        pats = " ".join("G{_, " + ", ".join(f"{k}_{n}" for n in names) + "}" for k in ks)
+        decl = ", ".join(f"{k}: G" for k in ks)
+        outs = ", ".join(
+            f"{'mat' if spec[n][0] == 'm' else 'tv'}_{fname}({params}, " + ", ".join(f"{k}_{n}" for k in ks) + ")"
+            for n in names)
+        return (f"def g_{fname}({decl}, {sig}) -> G:\n  match {' '.join(ks)}:\n    case {pats}:\n"
+                f"      G{{0.0, {outs}}}\n")
+
+    gadam = "\n".join([gmap("adam_m", "s, b1, omb", "+s: F32, +b1: F32, +omb: F32", 2),
+                       gmap("adam_v", "s, b2, omb", "+s: F32, +b2: F32, +omb: F32", 2),
+                       gmap("adam_p", "lr, c1, c2, eps", "+lr: F32, +c1: F32, +c2: F32, +eps: F32", 3)])
+
+    # parameter-copy mode for the batch tree
+    allf = names + ["wteT", "wqT", "wkT", "wvT", "woT", "wfcT", "wmpT"]
+    isM = lambda n: n.endswith("T") or spec[n][0] == "m"
+    pcopy = ("def p_copy(p: P) -> P:\n  match p:\n    case P{" + ", ".join(allf) + "}:\n      P{"
+             + ", ".join(f"{'mat_copy' if isM(n) else 'tv_copy'}({n})" for n in allf) + "}\n")
+    child, leaf = {"node": ("p_copy(p)", "p"), "leaf": ("p", "p_copy(p)")}.get(COPY, ("p", "p"))
+    batch = f"""{pcopy}
+def batch_grad(+d: Nat, +p: P, +idx: U32) -> G:
+  match d:
+    case 0n:
+      sample_grad({leaf}, phrase_x(idx), phrase_y(idx))
+    case 1n+k:
+      a b = batch_grad(k, p, (idx * 2 : U32)) batch_grad(k, {child}, (idx * 2 + 1 : U32))
+      g_add(a, b)
+"""
+
+    def toks(ids):
+        r = "TNil{}"
+        for t in reversed(ids):
+            r = f"TCon{{{t}, {r}}}"
+        return r
+
+    def table(name, data):
+        cases = "\n".join(f"    case {i}:\n      {toks(d)}" for i, d in enumerate(data[:-1]))
+        return (f"def {name}_at(+i: U32) -> Toks:\n  match i:\n{cases}\n    case _:\n      {toks(data[-1])}\n\n"
+                f"def {name}(+i: U32) -> Toks:\n  {name}_at(U32.mod(i, {len(data)}))")
+
+    gen = f"""{table('phrase_x', X)}
+
+{table('phrase_y', Y)}
+
+{unflat}
+
+{gadd}
+{gadam}
+def init_flat() -> Vec:
+  {vec_lit(flat.tolist(), cat="vcat")}
+
+def depth() -> Nat:
+  {depth}n
+
+def batch_size() -> U32:
+  {B}
+
+def inv_bt() -> F32:
+  {f32lit(1.0 / (B * T))}
+
+def n_steps() -> Nat:
+  {steps}n
+
+def n_params() -> Nat:
+  {nparam}n
+
+def adam_lr() -> F32:
+  {f32lit(LR)}
+
+def adam_b1() -> F32:
+  {f32lit(B1)}
+
+def adam_b2() -> F32:
+  {f32lit(B2)}
+
+def adam_eps() -> F32:
+  {f32lit(EPS)}
+"""
+    lib = open(os.path.join(HERE, "train_tile.bend")).read()
+    pre, rest_ = lib.split("# @@TILE_MAT_OPS@@")
+    mid, post = rest_.split("# @@GENERATED@@")
+    post = post.replace("# @@BATCH@@", batch)
+    return ("import Base\n\n" + header + "\n\n" + tile_gen.tile_ops() + "\n" + pre + "\n" + tile_gen.tile_mat_ops()
+            + "\n" + mid + "\n" + gen + "\n" + post)
+
+
 # ------------------------------------------------------------------ run Bend
 def env():
     e = dict(os.environ)
@@ -211,11 +366,14 @@ def _unlimited_stack():
     resource.setrlimit(resource.RLIMIT_STACK, (4 << 30, resource.RLIM_INFINITY))  # 'unlimited' breaks the thread stacks
 
 
+IMPL = os.environ.get('BEND_IMPL', 'tile')  # 'tile' (v2) or 'list' (v1)
+
+
 def build_bend(C, depth, steps, print_every, flat, tag, fork=None):
     os.makedirs(WORK, exist_ok=True)
     src = os.path.join(WORK, f"train_{tag}.bend")
     out = os.path.join(WORK, f"train_{tag}")
-    open(src, "w").write(gen_bend(C, depth, steps, print_every, flat, fork))
+    open(src, "w").write((gen_bend_tile if IMPL == 'tile' else gen_bend)(C, depth, steps, print_every, flat, fork))
     t = time.time()
     p = subprocess.run([BEND, src, "-o", out], capture_output=True, text=True, env=env(),
                        preexec_fn=_unlimited_stack)
@@ -224,10 +382,12 @@ def build_bend(C, depth, steps, print_every, flat, tag, fork=None):
     return out, time.time() - t
 
 
-def run_bend(binary, gpu, threads=None, timeout=3600):
+def run_bend(binary, gpu, threads=None, timeout=3600, steps=None):
     cmd = [binary, "--gpu", "on" if gpu else "off"]
     if threads:
         cmd += ["--threads", str(threads)]
+    if steps is not None:
+        cmd += [str(steps)]  # the training loop runs entirely inside one call; steps come from argv
     t = time.time()
     p = subprocess.run(cmd, capture_output=True, text=True, env=env(), timeout=timeout,
                        preexec_fn=_unlimited_stack)
@@ -329,6 +489,21 @@ def bend_step_ms(r):
     return (ls[ks[-1]][1] - ls[ks[0]][1]) / (ks[-1] - ks[0])
 
 
+def bend_ms_per_step(binary, gpu, threads, timeout, k, repeats=3):
+    """Whole run is a single call, so time two runs (2 and 2+k steps) and take the difference.
+    The GPU may be shared with other jobs, so repeat and keep the minimum (least disturbed) value."""
+    best, err = None, ""
+    for _ in range(repeats):
+        r1 = run_bend(binary, gpu, threads, timeout, steps=2)
+        r2 = run_bend(binary, gpu, threads, timeout, steps=2 + k)
+        if r1["rc"] or r2["rc"] or r1["total_ms"] is None or r2["total_ms"] is None:
+            err = (r1["err"] or r2["err"])[-150:]
+            continue
+        v = (r2["total_ms"] - r1["total_ms"]) / k
+        best = v if best is None else min(best, v)
+    return best, err
+
+
 def cmd_bench(a):
     C = a.C
     m = make_model(C)
@@ -353,11 +528,9 @@ def cmd_bench(a):
             if name == "bend_gpu" and depth < a.gpu_min_depth:
                 continue
             try:
-                r = run_bend(bins[gpu], gpu, thr, timeout=a.timeout)
-                row[name] = bend_step_ms(r)
-                if r["rc"] != 0:
-                    row[name] = None
-                    print("  !", name, r["err"][-150:].strip(), flush=True)
+                row[name], err = bend_ms_per_step(bins[gpu], gpu, thr, a.timeout, a.steps)
+                if row[name] is None:
+                    print("  !", name, err.strip(), flush=True)
             except subprocess.TimeoutExpired:
                 row[name] = None
                 print("  ! timeout", name, flush=True)

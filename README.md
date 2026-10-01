@@ -248,7 +248,12 @@ python3 src/onnx_compiler.py models/mini_resnet.onnx -o mini_resnet.bend
 
 ## 🏋️ Training nanoGPT in Bend vs. PyTorch (CPU / CUDA)
 
-`nanogpt/train_lib.bend` adds **training** to the Bend nanoGPT: forward pass, a hand-written backward pass, and AdamW (weight decay 0), all in pure Bend. The model is the same 1-layer / 1-head / pre-LN / tied-embedding / tanh-GELU nanoGPT (C=16, 14 tokens). Gradients come from three matrix products (`A·Bᵀ`, `A·B`, `Aᵀ·B`). A batch is a balanced fork-join tree of 2^d samples whose gradients are summed on the way up. The tree is launched with `!`, and each sample's matmuls are additionally split over 2^`fork_depth` row blocks.
+Training lives in two implementations of the same model (1-layer / 1-head / pre-LN / tied-embedding / tanh-GELU nanoGPT, C=16, 14 tokens): forward pass, a hand-written backward pass and AdamW (weight decay 0), all in pure Bend.
+
+- `nanogpt/train_tile.bend` (**v2, default**): vectors are lists of 16-wide **tiles**. The whole run is one `!` call.
+- `nanogpt/train_lib.bend` (v1, baseline): vectors are cons lists of scalars.
+
+Gradients come from three matrix products (`A·Bᵀ`, `A·B`, `Aᵀ·B`), all reduced to `A·Bᵀ` plus 16x16-block transposes. A batch is a balanced fork-join tree of 2^d samples whose gradient records are summed on the way up, and each sample's matmuls are additionally split over 2^`fork_depth` row blocks.
 
 ### Correctness
 
@@ -259,51 +264,69 @@ Same init (rounded to the same decimals), same data, same Adam hyper-parameters 
 | PyTorch loss | 3.466185 | 1.530063 | 0.468194 |
 | Bend loss | 3.466186 | 1.530064 | 0.468193 |
 
-Max |Δloss| over 30 steps is 1.3e-5, on Bend CPU and Bend GPU alike.
+Max |Δloss| over 30 steps is 1.1e-5, on Bend CPU and Bend GPU alike.
 
 ### Speed (ms per training step, C=16, lower is better)
 
-NVIDIA A100 80GB, 24 CPU cores, Bend 2.0.34, PyTorch 2.11. B is the batch size. PyTorch times are after a 5-step warm-up; Bend times are the mean of the steps after the first. Bend CPU uses `fork_depth=0`; Bend GPU uses `fork_depth=4`.
+NVIDIA A100 80GB (shared with other jobs), 24 CPU cores, Bend 2.0.34, PyTorch 2.11. B is the batch size. PyTorch times are after a 5-step warm-up. Bend times come from the difference between a 2-step and an 8-step run of the same binary; for Bend the minimum of 3 repeats is reported, because other jobs on the GPU slow some runs by up to 2x. Bend CPU uses `fork_depth=0`; Bend GPU uses `fork_depth=4`.
 
 | B | PyTorch CUDA | PyTorch CPU | Bend CPU (24 threads) | Bend CPU (1 thread) | Bend GPU |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 0.8 | 1.7 | 1.7 | 1.7 | 199 |
-| 4 | 0.9 | 0.7 | 2.7 | 6.3 | 306 |
-| 16 | 0.7 | 1.8 | 3.3 | 23 | 392 |
-| 64 | 0.8 | 1.0 | 9.3 | 94 | 635 |
-| 256 | 0.9 | 1.8 | 34 | 388 | 918 |
-| 1024 | 1.2 | 5.0 | 135 | 1522 | 1777 |
-| 4096 | 3.2 | 20.6 | 484 | 6139 | 2718 |
+| 1 | 0.8 | 0.9 | 0.2 | <1 | 50 |
+| 4 | 0.9 | 0.7 | 0.5 | 0.8 | 78 |
+| 16 | 0.8 | 0.8 | 1.0 | 3.2 | 98 |
+| 64 | 0.9 | 1.1 | 2.3 | 13.8 | 130 |
+| 256 | 0.8 | 3.0 | 7.7 | 58 | 161 |
+| 1024 | 1.2 | 5.2 | 28 | 224 | 251 |
+| 4096 | 3.2 | 19.3 | 107 | 911 | 275 |
+| 16384 | 8.8 | 98.6 | 394 | 3687 | 1441 |
+
+Compared with v1 (cons lists), at B=4096: Bend CPU 24 threads 484 to 107 ms (4.5x), Bend CPU 1 thread 6139 to 911 ms (6.7x), Bend GPU 2718 to 275 ms (9.9x).
 
 **Takeaways**
 
-- **PyTorch CUDA is still far faster.** At B=4096 Bend on 24 CPU threads is about 150x slower and Bend on the GPU about 850x slower. At this size PyTorch is bound by kernel-launch overhead (~0.8 ms).
-- **Bend GPU is still slower than Bend CPU everywhere we measured.** At B=4096 it is about 5.6x slower than 24 CPU threads. Its time grows slowly with B, because the lanes are far from saturated, but each GPU lane is very slow. The small-B cost is dominated by sequential fork/join stages (about 0.5 ms each).
-- **Caveats.** The "batch" repeats 4 phrases, so large B measures speed, not learning. Each point averages only a few steps, on one model size (C=16). Larger models were not benchmarked.
+- **Bend on 24 CPU threads now matches PyTorch on small batches.** At B=1 and B=4 it is faster than PyTorch CPU and CUDA; at B=16 it is on par; by B=256 PyTorch CPU is ahead.
+- **PyTorch CUDA is still far faster at large batch.** At B=4096 Bend CPU (24 threads) is ~33x slower and Bend GPU ~86x slower than PyTorch CUDA.
+- **Bend GPU is still slower than Bend CPU** at every size we measured. The GPU gap to the CPU shrank from ~5x to ~2.6x at B=4096. The B=16384 GPU number is noisy (other jobs were running); a clean run was 1134 ms.
+- **Caveats.** The "batch" repeats 4 phrases, so large B measures speed, not learning. One model size (C=16). Each point is a handful of steps.
 
-### Optimizations (vs. the first working version)
+### Why Bend's GPU is slow here (measured, not guessed)
 
-The loss curve still matches PyTorch to 1.3e-5 after every step below. Speed-up at B=4096, and at B=1 for the GPU:
+`!` lets Bend reach about **300 GFLOP/s on the GPU in a register-only loop**, which is the same order as PyTorch's effective throughput on this tiny model (~420 GFLOP/s at B=4096). So the gap is not the arithmetic, it is how the data is held. Micro-benchmarks on 4096 lanes, same total work:
 
-| | before | after |
+| Experiment | GPU | CPU (24 thr) |
 |---|---:|---:|
-| Bend CPU, 24 threads | 2651 ms | 484 ms (5.5x) |
-| Bend CPU, 1 thread | 25661 ms | 6139 ms (4.2x) |
-| Bend GPU | 5701 ms | 2718 ms (2.1x) |
-| Bend GPU, B=1 | 1307 ms | 199 ms (6.6x) |
+| register-only loop, 262M iterations | 10 ms | 23 ms |
+| dot products over two 64-element lists (fits in L2) | 34 ms | 49 ms |
+| the same work, lists of 512 / 4096 / 32768 elements per lane | 61 / 151 / 440 ms | 23 / 28 / 61 ms |
+| the same work, as 16-wide tiles instead of lists (2048 tiles per lane) | 125 ms | 32 ms |
+
+- **A cons list costs one heap cell and one dependent load per element.** A GPU lane has one load in flight, so once the per-lane working set leaves L2 the run turns into DRAM-latency pointer chasing: up to 18x slower at the same operation count, while the CPU barely notices.
+- **Bend has no dense array type.** `Array` is a binary tree of nodes, so there is no contiguous tensor, no cuBLAS and no tensor-core path.
+- **The fix that worked is a 16-field constructor (`T16`).** One load brings in 16 values, the dot product is straight-line code, and a matmul produces 16 output columns per node. That is v2.
+- **What did not matter (each measured):** parameter refcount contention (private per-branch copies changed nothing), control-flow divergence between samples (identical samples were only 20% faster), and the gradient tree reduction (12% of a GPU step).
+- **What is left:** at B=4096 the per-sample forward/backward on a lane takes ~430 ms of the ~500 ms GPU step. Under full load a lane is ~20x slower than the same sample alone (~40 ms at B=1), consistent with a memory-system limit on the heap, which source-level changes cannot remove.
+
+**Bottom line:** matching PyTorch CUDA for dense matmuls would need either dense arrays in Bend or a way to keep operands in registers. With the current runtime, the achievable target for Bend GPU is parity with Bend on a multicore CPU, which is not reached yet.
+
+### Optimizations
+
+The loss curve matches PyTorch to ~1e-5 after every step below.
 
 What worked:
 
-- **Dot-product-only matmuls.** `A·B` and `Aᵀ·B` used to be axpy-style loops that allocate two lists per scalar. They are now transposes plus the allocation-free dot loop `A·Bᵀ`. This was the biggest CPU win, about 2.9x single-threaded.
-- **Row-parallel matmuls (`fork_depth`).** The rows of `A` are split in halves 2^d times, so one sample no longer occupies a single slow GPU lane. This took GPU B=16 from 1785 ms to 425 ms. `fork_depth` 4 or 5 is best on GPU; 6 hurts B=1. On CPU it only adds overhead, so CPU runs use 0.
-- **Tail-recursive row loop.** Building the per-row result list as an accumulate-and-reverse loop gave another 1.6x on a single CPU thread.
+- **16-wide tiles (v2).** About 5-10x on every backend (numbers above). All vectors are lists of `T16`; the tile primitives are generated by `nanogpt/tile_gen.py`.
+- **Dot-product-only matmuls.** `A·B` and `Aᵀ·B` are transposes plus the allocation-free `A·Bᵀ` loop, instead of axpy loops that allocate two lists per scalar (~2.9x single-threaded on v1).
+- **Row-parallel matmuls (`fork_depth`).** Rows of `A` are split in halves 2^d times so one sample no longer sits on a single slow GPU lane (GPU B=16: 1785 ms to 425 ms on v1). 4 or 5 is best on GPU; on CPU it only adds overhead, so CPU runs use 0.
+- **Tail-recursive row loops** (accumulate and reverse): 1.6x single-threaded on v1, and required on GPU, where a lane's continuation stack is only ~2k frames deep.
+- **Parameters, gradients and Adam state kept as tile records** (no flat scalar vectors inside the loop), and the whole training loop run as a single `!` call, so there are no host round-trips per step.
 
-What did not help, and was reverted:
+What did not help, and was reverted or left out:
 
-- **Per-leaf private copies of the parameters** (to avoid refcount contention): slower on CPU and GPU.
-- **1x4 register-blocked dot products:** about 2x slower.
-- **Flat versions of the elementwise vector ops:** no gain.
-- **Structured gradient accumulation** (adding records of matrices up the tree instead of flat vectors): kept, because it simplifies the reduction, but it changed the time by only ~10% at B=1 and not at all at B=1024.
+- Per-leaf or per-branch private copies of the parameters (slower or equal).
+- 1x4 register-blocked dot products (~2x slower).
+- Flat versions of the elementwise vector ops (no gain).
+- Running the flat-list Adam inside the GPU call (110 ms per step on one lane): this is why the state is kept as tiles.
 
 ### Notes
 
@@ -314,7 +337,8 @@ What did not help, and was reverted:
 ```bash
 export BEND_CLANG_BIN=/path/to/clang19/bin
 python3 nanogpt/bench_train.py verify --C 16 --depth 2 --steps 30 --gpu   # Bend vs PyTorch loss curves
-python3 nanogpt/bench_train.py bench  --C 16 --depths 0 2 4 6 8 10 12 --steps 4
+python3 nanogpt/bench_train.py bench  --C 16 --depths 0 2 4 6 8 10 12 --steps 6
+BEND_IMPL=list python3 nanogpt/bench_train.py bench ...                    # v1 (cons-list) baseline
 ```
 
 ---
