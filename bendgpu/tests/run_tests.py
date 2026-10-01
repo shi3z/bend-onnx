@@ -24,14 +24,26 @@ def kern_type(src):
 
 
 def kern_bufs(src):
-    """names of the Buf parameters of the entry and the alias the file gave buf.bend"""
+    """[(name, type text)] of the buffer parameters of the entry, and the alias the file gave buf.bend / arr.bend"""
     entry = entry_of(src)
-    sig = re.search(rf"def {entry}\(([^)]*)\)", src).group(1)
-    names = [re.sub(r"^\+", "", p.split(":")[0].strip()) for p in sig.split(",")]
+    sig = re.search(rf"def {entry}\(([^)]*(?:<[^)]*>[^)]*)*)\)\s*->", src).group(1)
+    parts, depth, cur = [], 0, ""
+    for ch in sig:                      # split on top-level commas (types contain commas inside <>)
+        depth += ch == "<"; depth -= ch == ">"
+        if ch == "," and depth == 0:
+            parts.append(cur); cur = ""
+        else:
+            cur += ch
+    parts.append(cur)
+    ps = [(re.sub(r"^\+", "", p.split(":", 1)[0].strip()), p.split(":", 1)[1].strip()) for p in parts]
     if entry == "kern":
-        names = names[1:]
-    alias = re.search(r"import\s+\S*buf\.bend\s+as\s+(\w+)", src)
-    return names, (alias.group(1) if alias else None)
+        ps = ps[1:]
+    alias = re.search(r"import\s+\S*(?:buf|arr)\.bend\s+as\s+(\w+)", src)
+    return ps, (alias.group(1) if alias else None)
+
+
+def out_type(src):
+    return re.search(r"def pipe\([^\n]*\)\s*->\s*(.*):\s*$", src, re.M).group(1).strip()
 
 
 def run(cmd, **kw):
@@ -57,14 +69,28 @@ for f in sorted(glob.glob(os.path.join(HERE, "*.bend"))):
         ref = {}
         idx = [0, 1, 2, 3, 1000, 1500, 2000, 2047, 3000, 4095]
         shown = "F32.show" if ty == "F32" else "U32.show"
-        names, alias = kern_bufs(src)
-        binds = "".join(f"    +{n} : {alias}.Buf = {alias}.Buf.build(~{n}_init, {n}_depth(), 0)\n" for n in names)
+        ps, alias = kern_bufs(src)
+        names = [n for n, _ in ps]
+
+        def bind(n, ty):
+            if "Arr<" in ty:
+                elem = re.search(r"Arr<[^,]*,\s*(.*)>", ty).group(1)
+                return f"    +{n} : {ty} = {alias}.Arr.build(~{elem}, ~{n}_init, {n}_depth(), 0)\n"
+            return f"    +{n} : {alias}.Buf = {alias}.Buf.build(~{n}_init, {n}_depth(), 0)\n"
+        binds = "".join(bind(n, ty) for n, ty in ps)
         args = "".join(f", {n}" for n in names)
         if entry_of(src) == "kern":
             main = "\ndef main() -> IO(Unit):\n  do IO<Unit>:\n" + binds + "".join(f"    IO.print({shown}(kern({i}{args})))\n" for i in idx)
         else:
-            main = ("\ndef main() -> IO(Unit):\n  do IO<Unit>:\n" + binds + f"    +y : {alias}.Buf = pipe({args[2:]})\n"
-                    + "".join(f"    IO.print(F32.show({alias}.Buf.get(pipe_depth(), y, {i})))\n" for i in idx))
+            oty = out_type(src)
+            if "Arr<" in oty:
+                get = lambda i: f"{alias}.Arr.get(F32, pipe_depth(), y, {i}, 0.0)"
+                yty = oty
+            else:
+                get = lambda i: f"{alias}.Buf.get(pipe_depth(), y, {i})"
+                yty = f"{alias}.Buf"
+            main = ("\ndef main() -> IO(Unit):\n  do IO<Unit>:\n" + binds + f"    +y : {yty} = pipe({args[2:]})\n"
+                    + "".join(f"    IO.print(F32.show({get(i)}))\n" for i in idx))
         rf = os.path.join(HERE, "_ref_" + name + ".bend")   # next to the test so ../prelude resolves
         open(rf, "w").write(src + main)
         rr = run([BEND, rf])

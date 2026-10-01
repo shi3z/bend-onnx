@@ -43,6 +43,13 @@ arena (`BG_ARENA_KB`, default 64 KB, reset for each item) held by pointer, with 
 arena. `tests/list.bend` (records in a list built by non-tail recursion, nested pattern fold) and `tests/tree.bend`
 (tree with data at the nodes) match the stock runtime.
 
+**Milestone 4a (done): generic arrays, arrays of records.** `prelude/arr.bend` has `Arr<&2, A>` for any `Data`
+element type (a perfect tree again, so it is shareable and runs on the stock runtime), `Arr.get(-A, d, b, i, z)` and
+`Arr.map1..4(~A0.., ~C, ~f, d, b0.., off)`. On the device an `Arr<&2, A>` is a pointer to A (an array of structs when
+A is a record), `get` is one load and each `map` is one kernel launch whose result stays on the device, so a pipeline
+can hand arrays of records from stage to stage (`tests/arr_rec.bend`: scalar array -> P records -> gathered Q records ->
+scalars; matches the stock runtime). All nine tests pass.
+
 ```
 node --experimental-transform-types emit_cuda.mjs prog.bend kern > prog.cu
 nvcc -O3 -arch=sm_80 --fmad=false -o prog prog.cu && ./prog 4096
@@ -52,9 +59,9 @@ Anything outside the subset is rejected with the name of the construct (`unsuppo
 approximated.
 
 Tests (`tests/run_tests.py`): each program is compiled to CUDA and its outputs are compared, at 10 indices, with the
-stock `bend` runtime running the same source (buffers rebuilt there with `Buf.build`). All eight pass: a counted
+stock `bend` runtime running the same source (buffers rebuilt there with `Buf.build`). All nine pass: a counted
 loop, nested records, a 200-step escape-time loop with `Bool.pick`, a dot product and a matrix-vector product through
-buffers, a two-stage pipeline, a list of records and a tree.
+buffers, a two-stage pipeline, a list of records, a tree and a pipeline of record arrays.
 
 Measurements, same source:
 - 16-wide `T16` tile loop (`t_dot` chain, 4096 x 20000 iterations): ~6 ms on Bend's own GPU runtime, 1.9 ms here

@@ -78,6 +78,9 @@ function f32lit(bits) {
 const isBufTy = (k) => /(^|\/)buf\.Buf$/.test(k) || k === "Buf";
 const bufPrim = (name) => (/(^|\/)buf\.Buf\.get$/.test(name) ? [3, "$1[$2 & ((1u << $0) - 1u)]"] : null);
 const mapArity = (name) => { const m = /(^|\/)buf\.Buf\.map([1-4])$/.exec(name); return m ? +m[2] : 0; };
+const isArrTy = (k) => /(^|\/)arr\.Arr$/.test(k);
+const arrPrim = (name) => (/(^|\/)arr\.Arr\.get$/.test(name) ? [4, "$1[$2 & ((1u << $0) - 1u)]"] : null);
+const arrMap = (name) => { const m = /(^|\/)arr\.Arr\.map([1-4])$/.exec(name); return m ? +m[2] : 0; };
 const cname = (k) => "bg_" + k.replace(/[^A-Za-z0-9_]/g, "_");
 
 // ------------------------------------------------------------------------------------------ types
@@ -124,6 +127,7 @@ function mkTypes(book) {
       if (k === "F32") return "float";
       if (k === "Bool") return "bool";
       if (isBufTy(k)) return "const float*";
+      if (isArrTy(k)) return "const " + ctype(T.x[1], where) + "*";
       const adt = book.tlds[k];
       if (!adt || adt.$ !== "ADT") return unsup(`type ${Bend.term_show(T)}`, where);
       const kk = key(T);
@@ -167,9 +171,11 @@ export function emit(book, entry) {
   let uid = 0;
   const fresh = (p) => `${p}${uid++}`;
   const strip = (x) => (x.$ === "Ann" ? strip(x.x) : x);
+  // the C element type of a Buf / Arr parameter (null when the type is neither)
+  const bufElem = (A) => (isBufTy(A.k || "") ? "float" : isArrTy(A.k || "") ? T.ctype(A.x[1], "<buffer>") : null);
 
   function collect(name, where) {
-    if (defs.has(name) || PRIM[name] || bufPrim(name)) return;
+    if (defs.has(name) || PRIM[name] || bufPrim(name) || arrPrim(name)) return;
     const d = book.tlds[name];
     if (!d || d.$ !== "Def") unsup(`reference to ${name}`, where);
     if (d.v === null) unsup(`primitive ${name} has no native mapping`, where);
@@ -364,7 +370,7 @@ export function emit(book, entry) {
       kept = []; kt = [];
       args.forEach((a, i) => { if (ps[i] && ps[i].q !== "None") { kept.push(a); kt.push(ps[i].A); } });
     }
-    const prim = PRIM[name] || bufPrim(name);
+    const prim = PRIM[name] || bufPrim(name) || arrPrim(name);
     if (prim) {
       const [ar, tpl] = prim;
       if (kept.length !== ar) unsup(`partial application of ${name}`, where);
@@ -379,7 +385,7 @@ export function emit(book, entry) {
   const ed0 = book.tlds[entry];
   if (!ed0 || ed0.$ !== "Def") unsup(`no def named ${entry}`, "<entry>");
   const esig0 = sig(ed0);
-  const launchers = isBufTy(esig0.ret.k || "") ? pipeline() : mapEntry();
+  const launchers = isBufTy(esig0.ret.k || "") || isArrTy(esig0.ret.k || "") ? pipeline() : mapEntry();
 
   function structsText() {
     let out = "";
@@ -422,55 +428,67 @@ static __host__ __device__ __forceinline__ void* bg_alloc(bg_arena* ar, size_t n
     collect(entry, "<entry>");
     const esig = sig(ed0);
     if (esig.ps.length < 1 || esig.ps[0].A.k !== "U32") unsup("entry must be (i: U32, buffers...) -> value", entry);
-    const bufs = esig.ps.slice(1);
-    for (const b of bufs) if (!isBufTy(b.A.k)) unsup(`entry parameter ${b.k} is not a Buf (scalars: not yet)`, entry);
+    const bufs = esig.ps.slice(1).map((b) => {
+      const elem = bufElem(b.A);
+      if (elem === null) unsup(`entry parameter ${b.k} is not a Buf / Arr (scalars: not yet)`, entry);
+      return { k: b.k, elem };
+    });
     for (const b of bufs) { collect(`${b.k}_init`, entry); collect(`${b.k}_depth`, entry); }
     const retT = T.ctype(esig.ret, entry);
     const scalar = ["U32", "F32", "Nat", "Bool"].includes(esig.ret.k);
     const retInf = scalar ? null : inst(esig.ret);
     if (retInf && retInf.kind !== "struct") unsup("a kernel result must be a scalar or a record", entry);
-    return kernelHost(entry, retT, retInf, bufs.map((b) => b.k));
+    return kernelHost(entry, retT, retInf, bufs);
   }
 
   // ---------------------------------------------------------------------- entry: pipeline of maps
   function pipeline() {
     const where = entry;
-    const ps = esig0.ps;
-    for (const b of ps) if (!isBufTy(b.A.k || "")) unsup(`pipeline parameter ${b.k} is not a Buf`, where);
+    const ps = esig0.ps.map((b) => {
+      const elem = bufElem(b.A);
+      if (elem === null) unsup(`pipeline parameter ${b.k} is not a Buf / Arr`, where);
+      return { k: b.k, elem };
+    });
     for (const b of ps) { collect(`${b.k}_init`, where); collect(`${b.k}_depth`, where); }
-    const env = [];
+    const outElem = bufElem(esig0.ret);
+    const env = [], elems = [];             // device buffer name of each variable, and its C element type
     const setup = [], launch = [], kernels = new Map();
     let tmp = 0;
     let t = Bend.term_lower(ed0.v);
     let idx = 0;
-    while (t.$ === "Lam") { env[t.i] = `d_${ps[idx++].k}`; t = t.f; }
-    const hostConst = (e) => expr(e, env, where, undefined).replace(/\(ar(, )?/g, "(").replace(/\(\)/g, "(nullptr)").replace(/\(nullptr\)/g, "(nullptr)");
+    while (t.$ === "Lam") { env[t.i] = `d_${ps[idx].k}`; elems[t.i] = ps[idx].elem; idx++; t = t.f; }
     const mapCall = (v) => {
       const { head, args } = spine(strip(v));
-      const n = head.$ === "Ref" ? mapArity(head.k) : 0;
-      if (!n) unsup("pipeline stages must be Buf.map1..4 calls", where);
-      const f = strip(args[0]);
+      const nb = head.$ === "Ref" ? mapArity(head.k) : 0, na = head.$ === "Ref" ? arrMap(head.k) : 0;
+      const n = nb || na;
+      if (!n) unsup("pipeline stages must be Buf.map1..4 / Arr.map1..4 calls", where);
+      const lead = na ? n + 1 : 0;           // Arr.mapN: n input element types and the output type come first
+      const f = strip(args[lead]);
       if (f.$ !== "Ref") unsup("the stage function of a map must be a top-level def", where);
-      if (args.length !== n + 3) unsup(`Buf.map${n} called with ${args.length} arguments`, where);
+      if (args.length !== lead + n + 3) unsup(`map${n} called with ${args.length} arguments`, where);
       const fs = sig(book.tlds[f.k]);
-      if (fs.ps.length !== n + 1 || fs.ps[0].A.k !== "U32" || fs.ps.slice(1).some((p) => !isBufTy(p.A.k || ""))
-        || fs.ret.k !== "F32") unsup(`stage ${f.k} must be (i: U32, ${n} Buf) -> F32`, where);
+      if (fs.ps.length !== n + 1 || fs.ps[0].A.k !== "U32" || fs.ps.slice(1).some((p) => bufElem(p.A) === null))
+        unsup(`stage ${f.k} must be (i: U32, ${n} arrays) -> value`, where);
+      const outC = na ? T.ctype(args[n], where) : "float";
+      if (!na && fs.ret.k !== "F32") unsup(`stage ${f.k} of a Buf.map must return F32`, where);
+      if (T.ctype(fs.ret, where) !== outC) unsup(`stage ${f.k} returns ${T.ctype(fs.ret, where)}, the map declares ${outC}`, where);
       collect(f.k, where);
-      const off = strip(args[n + 2]);
+      const off = strip(args[lead + n + 2]);
       if (!(off.$ === "Lit" && off.v === 0)) unsup("map offsets other than 0", where);
-      const dRaw = strip(args[1]);
-      // the depth is a literal or a nullary def: evaluated on the host
+      const dRaw = strip(args[lead + 1]);
       const dExpr = dRaw.$ === "Lit" ? `${dRaw.v >>> 0}u` : dRaw.$ === "Ref" ? (collect(dRaw.k, where), `${cname(dRaw.k)}(nullptr)`)
         : unsup("the depth of a map must be a literal or a constant def", where);
-      const bufsOf = args.slice(2, 2 + n).map((a) => expr(strip(a), env, where, undefined));
-      if (!kernels.has(f.k)) kernels.set(f.k, n);
-      return { f: f.k, n, dExpr, bufs: bufsOf };
+      const bufsOf = args.slice(lead + 2, lead + 2 + n).map((a) => expr(strip(a), env, where, undefined));
+      const inElems = args.slice(lead + 2, lead + 2 + n).map((a) => { const e = strip(a); return e.$ === "Var" ? elems[e.i] : "float"; });
+      const kk = f.k;
+      if (!kernels.has(kk)) kernels.set(kk, { n, outC, inElems: fs.ps.slice(1).map((p) => bufElem(p.A)) });
+      return { f: f.k, n, dExpr, bufs: bufsOf, outC };
     };
     const emitMap = (m, outName) => {
-      setup.push(`uint32_t n_${outName} = 1u << (${m.dExpr}); float* ${outName}; CK(cudaMalloc(&${outName}, (size_t)n_${outName} * 4));`);
+      setup.push(`uint32_t n_${outName} = 1u << (${m.dExpr}); ${m.outC}* ${outName}; CK(cudaMalloc(&${outName}, (size_t)n_${outName} * sizeof(${m.outC})));`);
       launch.push(`km_${cname(m.f)}<<<(bg_res(n_${outName}) + 255) / 256, 256>>>(${outName}, n_${outName}, arena${m.bufs.map((b) => ", " + b).join("")});`);
     };
-    let outName = null;
+    let outName = null, outC = outElem;
     while (true) {
       if (t.$ === "Let") {
         for (let j = 0; j < t.k.length; j++) {
@@ -478,32 +496,39 @@ static __host__ __device__ __forceinline__ void* bg_alloc(bg_arena* ar, size_t n
           const name = `t${tmp++}`;
           emitMap(m, name);
           env[t.i[j]] = name;
+          elems[t.i[j]] = m.outC;
         }
         t = t.f;
         continue;
       }
       const e = strip(t);
-      if (e.$ === "Var") { outName = env[e.i]; break; }
+      if (e.$ === "Var") { outName = env[e.i]; outC = elems[e.i]; break; }
       const m = mapCall(e);
       outName = `t${tmp++}`;
       emitMap(m, outName);
+      outC = m.outC;
       break;
     }
+    const outInf = ["float", "uint32_t", "bool"].includes(outC) ? null : [...T.reg.values()].find((i) => i.name === outC);
     let out = commonKernels();
-    for (const [f, n] of kernels) {
-      const bs = Array.from({ length: n }, (_, i) => `, const float* b${i}`).join("");
-      const as = Array.from({ length: n }, (_, i) => `, b${i}`).join("");
-      out += `__global__ void km_${cname(f)}(float* out, uint32_t n, char* arena${bs}) {
+    for (const [f, kd] of kernels) {
+      const bs = kd.inElems.map((e, i) => `, const ${e}* b${i}`).join("");
+      const as = kd.inElems.map((_, i) => `, b${i}`).join("");
+      out += `__global__ void km_${cname(f)}(${kd.outC}* out, uint32_t n, char* arena${bs}) {
   uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x, stride = gridDim.x * blockDim.x;
   for (uint32_t i = tid; i < n; i += stride) { bg_arena ar; ar.cur = arena + (size_t)tid * BG_ARENA_BYTES; out[i] = ${cname(f)}(&ar, i${as}); }
 }\n`;
     }
     for (const b of ps) {
-      out += `__global__ void init_${b.k}(float* p, uint32_t n) { uint32_t j = blockIdx.x * blockDim.x + threadIdx.x; if (j < n) p[j] = ${cname(b.k + "_init")}(nullptr, j); }\n`;
+      out += `__global__ void init_${b.k}(${b.elem}* p, uint32_t n) { uint32_t j = blockIdx.x * blockDim.x + threadIdx.x; if (j < n) p[j] = ${cname(b.k + "_init")}(nullptr, j); }\n`;
     }
     const inSetup = ps.map((b) => `
-  uint32_t n_${b.k} = 1u << ${cname(b.k + "_depth")}(nullptr); float* d_${b.k}; CK(cudaMalloc(&d_${b.k}, (size_t)n_${b.k} * 4));
+  uint32_t n_${b.k} = 1u << ${cname(b.k + "_depth")}(nullptr); ${b.elem}* d_${b.k}; CK(cudaMalloc(&d_${b.k}, (size_t)n_${b.k} * sizeof(${b.elem})));
   init_${b.k}<<<(n_${b.k} + 255) / 256, 256>>>(d_${b.k}, n_${b.k});`).join("");
+    const first = outInf ? "h[i].f0" : "h[i]";
+    const showProbe = outInf
+      ? outInf.ctors[0].fields.map((f, i) => `printf(" %.7g", (double)h[i].f${i});`).join(" ")
+      : `printf(" %.7g", (double)h[i]);`;
     out += `
 int main() {
   CK(cudaDeviceSetLimit(cudaLimitStackSize, (size_t)BG_STACK_KB * 1024));
@@ -519,10 +544,10 @@ int main() {
   }
   cudaEventRecord(e1); CK(cudaEventSynchronize(e1)); float ms; cudaEventElapsedTime(&ms, e0, e1);
   uint32_t n = n_${outName};
-  std::vector<float> h(n); CK(cudaMemcpy(h.data(), ${outName}, (size_t)n * 4, cudaMemcpyDeviceToHost));
-  double sum = 0; for (uint32_t i = 0; i < n; i++) sum += h[i];
+  std::vector<${outC}> h(n); CK(cudaMemcpy(h.data(), ${outName}, (size_t)n * sizeof(${outC}), cudaMemcpyDeviceToHost));
+  double sum = 0; for (uint32_t i = 0; i < n; i++) sum += (double)${first};
   const uint32_t probe[] = {0, 1, 2, 3, 1000, 1500, 2000, 2047, 3000, 4095};
-  for (uint32_t pi = 0; pi < 10; pi++) { uint32_t i = probe[pi]; if (i >= n) continue; printf("kern(%u) = %.7g\\n", i, (double)h[i]); }
+  for (uint32_t pi = 0; pi < 10; pi++) { uint32_t i = probe[pi]; if (i >= n) continue; printf("kern(%u) =", i); ${showProbe} printf("\\n"); }
   printf("sum %.9g   %.4f ms per pipeline run (%zu launches, out n=%u)\\n", sum, ms / reps, (size_t)${launch.length}, n);
   return 0;
 }
@@ -544,19 +569,19 @@ static inline uint32_t bg_res(uint32_t n) { return n < BG_RESIDENT ? n : BG_RESI
     const show = isStruct
       ? retInf.ctors[0].fields.map((f, i) => `printf(" %.7g", (double)v.f${i});`).join(" ")
       : `printf(" %.7g", (double)v);`;
-    const bp = bufs.map((b) => `, const float* b_${b}`).join("");
-    const ba = bufs.map((b) => `, d_${b}`).join("");
+    const bp = bufs.map((b) => `, const ${b.elem}* b_${b.k}`).join("");
+    const ba = bufs.map((b) => `, d_${b.k}`).join("");
     const inits = bufs.map((b) => `
-__global__ void init_${b}(float* p, uint32_t n) { uint32_t j = blockIdx.x * blockDim.x + threadIdx.x; if (j < n) p[j] = ${cname(b + "_init")}(nullptr, j); }`).join("");
+__global__ void init_${b.k}(${b.elem}* p, uint32_t n) { uint32_t j = blockIdx.x * blockDim.x + threadIdx.x; if (j < n) p[j] = ${cname(b.k + "_init")}(nullptr, j); }`).join("");
     const alloc = bufs.map((b) => `
-  uint32_t n_${b} = 1u << ${cname(b + "_depth")}(nullptr); float* d_${b}; CK(cudaMalloc(&d_${b}, (size_t)n_${b} * 4));
-  init_${b}<<<(n_${b} + 255) / 256, 256>>>(d_${b}, n_${b});`).join("");
+  uint32_t n_${b.k} = 1u << ${cname(b.k + "_depth")}(nullptr); ${b.elem}* d_${b.k}; CK(cudaMalloc(&d_${b.k}, (size_t)n_${b.k} * sizeof(${b.elem})));
+  init_${b.k}<<<(n_${b.k} + 255) / 256, 256>>>(d_${b.k}, n_${b.k});`).join("");
     return `${commonKernels()}${inits}
 __global__ void k_${cn}(${retT}* out, uint32_t n, char* arena${bp}) {
   uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x, stride = gridDim.x * blockDim.x;
   for (uint32_t i = tid; i < n; i += stride) {
     bg_arena ar; ar.cur = arena + (size_t)tid * BG_ARENA_BYTES;
-    out[i] = ${cn}(&ar, i${bufs.map((b) => `, b_${b}`).join("")});
+    out[i] = ${cn}(&ar, i${bufs.map((b) => `, b_${b.k}`).join("")});
   }
 }
 
