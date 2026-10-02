@@ -50,6 +50,36 @@ A is a record), `get` is one load and each `map` is one kernel launch whose resu
 can hand arrays of records from stage to stage (`tests/arr_rec.bend`: scalar array -> P records -> gathered Q records ->
 scalars; matches the stock runtime). All nine tests pass.
 
+**Milestone 4b (done): the nanoGPT training step.** `nanogpt/gen.py` writes the whole step (forward, backward,
+weight gradients, Adam) as ordinary Bend: a chain of `Arr.map` stages over per-token records ("tapes"), 17 kernel
+launches per step, no heap, no CUDA written by hand. The loss over 30 steps matches PyTorch to 1.4e-5 and every
+parameter gradient to <1e-7 (`python3 nanogpt/run.py verify`; `nanogpt/dbg.py` compares gradients).
+
+| B (samples/step) | hand CUDA | PyTorch CUDA | **Bend on bendgpu** | Bend on its own GPU runtime (v4) |
+|---:|---:|---:|---:|---:|
+| 4096  | 0.95 ms | 3.19 ms | **4.97 ms** | 161 ms |
+| 65536 | 14.8 ms | 33.9 ms | **71.3 ms** | 453 ms |
+
+(ms per training step, min of 3, shared A100; the same model, init, data and Adam everywhere.) That is 5x the
+hand-written kernel and 1.6-2.1x PyTorch, against 13-30x before. Per stage at B=4096 (ms): the 12 forward/backward
+stages take 0.1-0.3 each (2.3 together), the three weight-gradient stages 1.0 each, the chunk reduction 0.3.
+
+What made it fast, in order of effect: (1) a weight-gradient thread owns 16 consecutive parameters and a chunk of
+tokens, and a whole warp runs the same job, so the field indices are compile-time constants and only the needed
+fields are loaded (64 -> 13.5 ms); (2) more chunks, so there are enough threads (-> 6.8 ms); (3) two-level
+reduction of the chunks (-> 5.0 ms); (4) a heap-free program may launch one thread per element instead of the
+16384 threads the arenas allow.
+
+```
+python3 bendgpu/nanogpt/run.py verify --B 4 --steps 30      # loss curve vs PyTorch
+python3 bendgpu/nanogpt/run.py bench --Bs 4096,65536
+BG_PROF=1 ./train_binary 20 12289 params.bin                # per-stage times
+```
+
+Rules of the checker that shaped the generator (they apply to any program for this back end): a `match` may only
+scrutinise parameters and fields, in parameter order, and not after a `let`, so loaded records are passed to a body
+def as its first parameters; a `let`-bound value used twice must be `+`.
+
 ```
 node --experimental-transform-types emit_cuda.mjs prog.bend kern > prog.cu
 nvcc -O3 -arch=sm_80 --fmad=false -o prog prog.cu && ./prog 4096
@@ -59,9 +89,9 @@ Anything outside the subset is rejected with the name of the construct (`unsuppo
 approximated.
 
 Tests (`tests/run_tests.py`): each program is compiled to CUDA and its outputs are compared, at 10 indices, with the
-stock `bend` runtime running the same source (buffers rebuilt there with `Buf.build`). All nine pass: a counted
+stock `bend` runtime running the same source (buffers rebuilt there with `Buf.build`). All ten pass: a counted
 loop, nested records, a 200-step escape-time loop with `Bool.pick`, a dot product and a matrix-vector product through
-buffers, a two-stage pipeline, a list of records, a tree and a pipeline of record arrays.
+buffers, a two-stage pipeline, a list of records, a tree, a pipeline of record arrays and nested records.
 
 Measurements, same source:
 - 16-wide `T16` tile loop (`t_dot` chain, 4096 x 20000 iterations): ~6 ms on Bend's own GPU runtime, 1.9 ms here
@@ -82,4 +112,5 @@ node --version            # >= 22 (uses --experimental-transform-types)
 1. ~~Read-only buffers~~ (done, see above).
 2. ~~Parallel loops~~ (maps and pipelines done; shared-memory tile cooperation still open).
 3. ~~Heap data structures~~ (done: per-thread arena).
-4. **Target**: the nanoGPT training step from `nanogpt/`, within a small factor of `nanogpt/cuda_ref/cuda_train.cu`.
+4. ~~nanoGPT training step within a small factor of `nanogpt/cuda_ref/cuda_train.cu`~~ (done: 5x; the gap is the
+   weight-gradient stages, which need shared-memory tile cooperation or multi-row register tiles).
