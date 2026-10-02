@@ -189,10 +189,10 @@ def gen(B):
     N = 16 * B
     DN = int(math.log2(N))
     assert 1 << DN == N
-    K = max(1, min(256, N // 1024))
+    K = max(1, min(1024, N // 64))
     L = N // K
     KD = int(math.log2(K))
-    GD = KD + 12
+    GD = KD + 8
     inv_bt = np.float32(1.0) / (np.float32(B) * np.float32(T))
 
     out = []
@@ -501,133 +501,227 @@ def gen(B):
     out.append(f.text())
 
     # ================================================================= gradients
-    def gstage(name, tapes, groups):
-        """tapes: [(param, array type text)]; groups: ascending [(hi, term_body_fn | None)] covering j from 0.
-        Thread i is chunk c = i/4096, parameter j = i%4096; it sums the parameter's gradient term over the tokens of
-        the chunk (a gap or a parameter beyond the last group has gradient 0)."""
+    # Thread (job r, chunk c) owns the 16 consecutive parameters 16r..16r+15 and sums their gradient over the tokens
+    # of chunk c. Consecutive threads share the job (same code path, static field indices); each loads only the
+    # fields it needs. The result is a V16 per (job, chunk); Adam adds the chunks up.
+    NJOB = 256
+    z16 = zero_vec(16)
+    out.append(f"def z16() -> V16:\n  {z16}\n")
+    f = Fn("v16sel", ["+v: V16", "+k: U32"], "F32")
+    f.match(["v"], [pat16("u")])
+    f.L(seltree(names("u", 16), "k"))
+    out.append(f.text())
+
+    def mkjob(stage, tapes, r, recs, needs, upd, step=1, off=0):
+        """recs: [(var, rec, arr)] loaded at token tk; needs: [(var, field, elem)] in record-field order, elem = None for
+        the 16 lanes of a V16 field, an int e for the scalar e of a V16/V32/V64 field, ('blk', b) for lane block b;
+        upd(env) -> 16 update expressions. Returns the name of the loop function."""
         tp = [f"+{p}: {t}" for p, t in tapes]
         ta = [p for p, _ in tapes]
-        e = "0.0"
-        for gi in reversed(range(len(groups))):
-            hi, body = groups[gi]
-            if body is None:
-                e = pick("F32", f"U32.is_lt(j, {hi})", "0.0", e)
-                continue
-            tf = Fn(f"{name}_t{gi}", ["+tk: U32", "+j: U32"] + tp, "F32")
-            body(tf)
-            out.append(tf.text())
-            lf = Fn(f"{name}_l{gi}", ["+n: Nat", "+tk: U32", "+j: U32"] + tp + ["+acc: F32"], "F32")
-            lf.L("match n:")
-            lf.L("  case 0n:")
-            lf.L("    acc")
-            lf.L("  case 1n+p:")
-            lf.L(f"    {name}_l{gi}(p, (tk + 1 : U32), j, {', '.join(ta)}, {add('acc', f'{name}_t{gi}(tk, j, ' + ', '.join(ta) + ')')})")
-            out.append(lf.text())
-            e = pick("F32", f"U32.is_lt(j, {hi})", f"{name}_l{gi}({L}n, tk0, j, {', '.join(ta)}, 0.0)", e)
-        f = Fn(name, ["+i: U32"] + tp, "F32")
-        f.let("j", "U32", "U32.mod(i, 4096)")
-        f.let("c", "U32", "U32.div(i, 4096)")
+        nm_ = f"{stage}_j{r}"
+        sf = Fn(nm_ + "s", ["+tk: U32"] + tp + ["+acc: V16"], "V16")
+        for var, rec, arr in recs:
+            sf.let_rec(var, rec, f"ld_{rec}({arr}, tk)")
+        env = {}
+        done = set()
+        for var, fld, elem in needs:
+            rec = dict((v, rc) for v, rc, _ in recs)[var]
+            if var not in done:
+                unrec(sf, var, rec, var + "_")
+                done.add(var)
+            k = dict(recs_all[rec])[fld]
+            base = f"{var}{fld}"
+            fv = f"{var}_{fld}"
+            if k == 16:
+                blk, lane = 0, elem
+                sf.match([fv], [pat16(base)])
+            else:
+                tag = {32: "V32", 64: "V64"}[k]
+                if isinstance(elem, tuple):
+                    blk, lane = elem[1], None
+                else:
+                    blk, lane = elem // 16, elem % 16
+                hn = [f"{base}h{q}" for q in range(k // 16)]
+                sf.match([fv], [f"{tag}{{{', '.join(hn)}}}"])
+                sf.match([hn[blk]], [pat16(base)])
+            if isinstance(elem, int) or elem is None and k == 16 and False:
+                env[(var, fld)] = nm(base, lane)
+            else:
+                env[(var, fld)] = [nm(base, c) for c in range(16)]
+        sf.match(["acc"], [pat16("ac")])
+        ups = upd(env)
+        sf.L("V16{" + ", ".join(add(nm("ac", c), ups[c]) for c in range(16)) + "}")
+        out.append(sf.text())
+        lf = Fn(nm_ + "l", ["+n: Nat", "+tk: U32"] + tp + ["+acc: V16"], "V16")
+        lf.L("match n:")
+        lf.L("  case 0n:")
+        lf.L("    acc")
+        lf.L("  case 1n+p:")
+        lf.L(f"    {nm_}l(p, (tk + {step} : U32), {', '.join(ta)}, {nm_}s(tk, {', '.join(ta)}, acc))")
+        out.append(lf.text())
+        return nm_ + "l", step, off
+
+    recs_all = recs
+
+    def dispatch(stage, tapes, leaves):
+        """leaves: {r: (loopfn, step)}; thread i = (r, c) with r = i / K"""
+        tp = [f"+{p}: {t}" for p, t in tapes]
+        ta = [p for p, _ in tapes]
+
+        def tree(lo, hi):
+            if hi - lo == 1:
+                if lo not in leaves:
+                    return "z16()"
+                lf_, st, off = leaves[lo]
+                n_ = L // st
+                return f"{lf_}({n_}n, {'tk0' if off == 0 else f'(tk0 + {off} : U32)'}, {', '.join(ta)}, z16())"
+            mid = (lo + hi) // 2
+            return pick("V16", f"U32.is_lt(r, {mid})", tree(lo, mid), tree(mid, hi))
+        f = Fn(stage, ["+i: U32"] + tp, "V16")
+        f.let("r", "U32", f"U32.div(i, {K})")
+        f.let("c", "U32", f"U32.mod(i, {K})")
         f.let("tk0", "U32", f"(c * {L} : U32)")
-        f.L(e)
+        f.L(tree(0, NJOB))
         out.append(f.text())
 
-    def div16(off):
-        return f"U32.div(U32.sub(j, {off}), 16)", f"U32.mod(U32.sub(j, {off}), 16)"
+    # ---- G1: R3 (xhf nf dl) BK1 (dnf dr2) MU (h)
+    t1 = [("r3s", arrT("R3")), ("b1s", arrT("BK1")), ("mus", arrT("MU"))]
+    leaves = {}
+    for v in range(V):   # wte head: dWte[v][c] += dl_v * nf_c
+        leaves[v] = mkjob("g1", t1, v, [("a", "R3", "r3s")], [("a", "nf", None), ("a", "dl", v)],
+                          lambda e: [mul(e[("a", "dl")], x) for x in e[("a", "nf")]])
+    for o_ in range(16):  # wmp[o][16 blocks of 64]
+        for blk in range(4):
+            r = (O["WMP"] + o_ * 64 + blk * 16) // 16
+            leaves[r] = mkjob("g1", t1, r, [("a", "BK1", "b1s"), ("m", "MU", "mus")],
+                              [("a", "dr2", o_), ("m", "h", ("blk", blk))],
+                              lambda e: [mul(e[("a", "dr2")], x) for x in e[("m", "h")]])
+    leaves[O["BMP"] // 16] = mkjob("g1", t1, O["BMP"] // 16, [("a", "BK1", "b1s")], [("a", "dr2", None)], lambda e: list(e[("a", "dr2")]))
+    leaves[O["LNFG"] // 16] = mkjob("g1", t1, O["LNFG"] // 16, [("a", "BK1", "b1s"), ("b", "R3", "r3s")],
+                                    [("a", "dnf", None), ("b", "xhf", None)],
+                                    lambda e: [mul(x, y) for x, y in zip(e[("a", "dnf")], e[("b", "xhf")])])
+    leaves[O["LNFB"] // 16] = mkjob("g1", t1, O["LNFB"] // 16, [("a", "BK1", "b1s")], [("a", "dnf", None)], lambda e: list(e[("a", "dnf")]))
+    # loss: its own job (needs the scalar field `loss`)
+    def mkloss():
+        nm_ = "g1_jloss"
+        sf = Fn(nm_ + "s", ["+tk: U32"] + [f"+{p}: {t}" for p, t in t1] + ["+acc: V16"], "V16")
+        sf.let_rec("a", "R3", "ld_R3(r3s, tk)")
+        unrec(sf, "a", "R3", "a_")
+        sf.match(["acc"], [pat16("ac")])
+        sf.L("V16{" + ", ".join([add("ac_0", "a_loss")] + [nm("ac", c) for c in range(1, 16)]) + "}")
+        out.append(sf.text())
+        ta = ", ".join(p for p, _ in t1)
+        lf = Fn(nm_ + "l", ["+n: Nat", "+tk: U32"] + [f"+{p}: {t}" for p, t in t1] + ["+acc: V16"], "V16")
+        lf.L("match n:"); lf.L("  case 0n:"); lf.L("    acc"); lf.L("  case 1n+p:")
+        lf.L(f"    {nm_}l(p, (tk + 1 : U32), {ta}, {nm_}s(tk, {ta}, acc))")
+        out.append(lf.text())
+        return nm_ + "l", 1, 0
+    leaves[NPARAM // 16] = mkloss()
+    dispatch("g1", t1, leaves)
 
-    def term_of(spec):
-        """spec = list of (var, rec, arr) loads and the product expression builder"""
-        def mk(loads, expr):
-            def body(tf):
-                for var, rec, arr in loads:
-                    tf.let(var, rec, f"ld_{rec}({arr}, tk)")
-                tf.L(expr)
-            return body
-        return mk
-    T_ = term_of(None)
+    # ---- G2: AT (ctx) R2 (xh2 n2) DF (df) BK3 (dn2 dr1)
+    t2 = [("ats", arrT("AT")), ("r2s", arrT("R2")), ("dfs", arrT("DF")), ("b3s", arrT("BK3"))]
+    leaves = {}
+    for o_ in range(16):
+        r = (O["WO"] + o_ * 16) // 16
+        leaves[r] = mkjob("g2", t2, r, [("a", "BK3", "b3s"), ("b", "AT", "ats")], [("a", "dr1", o_), ("b", "ctx", None)],
+                          lambda e: [mul(e[("a", "dr1")], x) for x in e[("b", "ctx")]])
+    r = O["BO"] // 16
+    leaves[r] = mkjob("g2", t2, r, [("a", "BK3", "b3s")], [("a", "dr1", None)], lambda e: list(e[("a", "dr1")]))
+    r = O["LN2G"] // 16
+    leaves[r] = mkjob("g2", t2, r, [("a", "BK3", "b3s"), ("b", "R2", "r2s")], [("a", "dn2", None), ("b", "xh2", None)],
+                      lambda e: [mul(x, y) for x, y in zip(e[("a", "dn2")], e[("b", "xh2")])])
+    r = O["LN2B"] // 16
+    leaves[r] = mkjob("g2", t2, r, [("a", "BK3", "b3s")], [("a", "dn2", None)], lambda e: list(e[("a", "dn2")]))
+    for m_ in range(F):
+        r = (O["WFC"] + m_ * 16) // 16
+        leaves[r] = mkjob("g2", t2, r, [("a", "DF", "dfs"), ("b", "R2", "r2s")], [("a", "df", m_), ("b", "n2", None)],
+                          lambda e: [mul(e[("a", "df")], x) for x in e[("b", "n2")]])
+    for blk in range(4):
+        r = (O["BFC"] + blk * 16) // 16
+        leaves[r] = mkjob("g2", t2, r, [("a", "DF", "dfs")], [("a", "df", ("blk", blk))], lambda e: list(e[("a", "df")]))
+    dispatch("g2", t2, leaves)
 
-    def outer(off, arec_a, va, fa, arr_a, vb, fb, arr_b, rec_b):
-        # sum_tk A_field[row] * B_field[col], row = k/16, col = k%16
-        r_, c_ = div16(off)
-        return T_([(va, arec_a, arr_a), (vb, rec_b, arr_b)], mul(f"{arec_a}_{fa}({va}, {r_})", f"{rec_b}_{fb}({vb}, {c_})"))
+    # ---- G3: R1 (xh1 n1) BK5 (dq dk dv) BK6 (dn1 de) + tokens
+    t3 = [("r1s", arrT("R1")), ("b5s", arrT("BK5")), ("b6s", arrT("BK6")), ("tks", arrT("U32"))]
+    leaves = {}
 
-    def vec(off, rec, fld, arr, other=None):
-        c = f"U32.mod(U32.sub(j, {off}), 16)"
-        if other is None:
-            return T_([("a", rec, arr)], f"{rec}_{fld}(a, {c})")
-        orec, ofld, oarr = other
-        return T_([("a", rec, arr), ("b", orec, oarr)], mul(f"{rec}_{fld}(a, {c})", f"{orec}_{ofld}(b, {c})"))
+    def mkembed(v):   # wte[v] += sum over tokens with x == v of de
+        nm_ = f"g3_je{v}"
+        ptp = [f"+{p}: {t}" for p, t in t3]
+        ta = ", ".join(p for p, _ in t3)
+        sf = Fn(nm_ + "s", ["+tk: U32"] + ptp + ["+acc: V16"], "V16")
+        sf.let_rec("a", "BK6", "ld_BK6(b6s, tk)")
+        unrec(sf, "a", "BK6", "a_")
+        sf.match(["a_de"], [pat16("de")])
+        sf.match(["acc"], [pat16("ac")])
+        sf.let("x", "U32", "A.Arr.get(U32, 7n, tks, ((U32.mod(U32.div(tk, 16), 4)) * 16 + U32.mod(tk, 16) : U32), 0)")
+        sf.L("V16{" + ", ".join(add(nm("ac", c), pick("F32", f"U32.is_eq(x, {v})", nm("de", c), "0.0")) for c in range(16)) + "}")
+        out.append(sf.text())
+        lf = Fn(nm_ + "l", ["+n: Nat", "+tk: U32"] + ptp + ["+acc: V16"], "V16")
+        lf.L("match n:"); lf.L("  case 0n:"); lf.L("    acc"); lf.L("  case 1n+p:")
+        lf.L(f"    {nm_}l(p, (tk + 1 : U32), {ta}, {nm_}s(tk, {ta}, acc))")
+        out.append(lf.text())
+        return nm_ + "l", 1, 0
+    for v in range(V):
+        leaves[v] = mkembed(v)
+    for t_ in range(T):   # wpe[t] += de of token t of every sample: stride 16
+        r = (O["WPE"] + t_ * 16) // 16
+        leaves[r] = mkjob("g3", t3, r, [("a", "BK6", "b6s")], [("a", "de", None)], lambda e: list(e[("a", "de")]), step=16, off=t_)
+    # the wpe job starts at token tk0 + t: encode the start through the dispatch
+    r = O["LN1G"] // 16
+    leaves[r] = mkjob("g3", t3, r, [("a", "R1", "r1s"), ("b", "BK6", "b6s")], [("a", "xh1", None), ("b", "dn1", None)],
+                      lambda e: [mul(x, y) for x, y in zip(e[("a", "xh1")], e[("b", "dn1")])])
+    r = O["LN1B"] // 16
+    leaves[r] = mkjob("g3", t3, r, [("a", "BK6", "b6s")], [("a", "dn1", None)], lambda e: list(e[("a", "dn1")]))
+    for (woff, boff, fld) in ((O["WQ"], O["BQ"], "dq"), (O["WK"], O["BK"], "dk"), (O["WV"], O["BV"], "dv")):
+        for o_ in range(16):
+            r = (woff + o_ * 16) // 16
+            leaves[r] = mkjob("g3", t3, r, [("a", "BK5", "b5s"), ("b", "R1", "r1s")], [("a", fld, o_), ("b", "n1", None)],
+                              lambda e, fld=fld: [mul(e[("a", fld)], x) for x in e[("b", "n1")]])
+        r = boff // 16
+        leaves[r] = mkjob("g3", t3, r, [("a", "BK5", "b5s")], [("a", fld, None)], lambda e, fld=fld: list(e[("a", fld)]))
+    dispatch("g3", t3, leaves)
 
-    # g1: wte head | wmp | bmp | lnfg | lnfb | loss
-    gstage("g1", [("r3s", arrT("R3")), ("b1s", arrT("BK1")), ("mus", arrT("MU"))], [
-        (512, T_([("a", "R3", "r3s")], mul("R3_dl(a, U32.div(j, 16))", "R3_nf(a, U32.mod(j, 16))"))),
-        (O["WMP"], None),
-        (O["BMP"], T_([("a", "BK1", "b1s"), ("m", "MU", "mus")],
-                      mul("BK1_dr2(a, U32.div(U32.sub(j, %d), 64))" % O["WMP"], "MU_h(m, U32.mod(U32.sub(j, %d), 64))" % O["WMP"]))),
-        (O["LNFG"], vec(O["BMP"], "BK1", "dr2", "b1s")),
-        (O["LNFB"], vec(O["LNFG"], "BK1", "dnf", "b1s", ("R3", "xhf", "r3s"))),
-        (NPARAM, vec(O["LNFB"], "BK1", "dnf", "b1s")),
-        (NPARAM + 1, lambda tf: (tf.let_rec("a", "R3", "ld_R3(r3s, tk)"), tf.match(["a"], ["R3{z1, z2, z3, z4, zl}"]), tf.L("zl"))),
-    ])
-    # g2: wo | bo | ln2g | ln2b | wfc | bfc
-    gstage("g2", [("ats", arrT("AT")), ("r2s", arrT("R2")), ("dfs", arrT("DF")), ("b3s", arrT("BK3"))], [
-        (O["WO"], None),
-        (O["BO"], outer(O["WO"], "BK3", "a", "dr1", "b3s", "b", "ctx", "ats", "AT")),
-        (O["LN2G"], vec(O["BO"], "BK3", "dr1", "b3s")),
-        (O["LN2B"], vec(O["LN2G"], "BK3", "dn2", "b3s", ("R2", "xh2", "r2s"))),
-        (O["WFC"], vec(O["LN2B"], "BK3", "dn2", "b3s")),
-        (O["BFC"], outer(O["WFC"], "DF", "a", "df", "dfs", "b", "n2", "r2s", "R2")),
-        (O["WMP"], T_([("a", "DF", "dfs")], f"DF_df(a, U32.sub(j, {O['BFC']}))")),
-    ])
-    # g3: wte embed | wpe | ln1g | ln1b | wq | bq | wk | bk | wv | bv
-    def term_embed(tf):
-        tf.let("t", "U32", "U32.mod(tk, 16)")
-        tf.let("ph", "U32", "U32.mod(U32.div(tk, 16), 4)")
-        tf.let("x", "U32", "A.Arr.get(U32, 7n, tks, (ph * 16 + t : U32), 0)")
-        tf.let("a", "BK6", "ld_BK6(b6s, tk)")
-        tf.L(pick("F32", "U32.is_eq(x, U32.div(j, 16))", "BK6_de(a, U32.mod(j, 16))", "0.0"))
-
-    def term_wpe(tf):
-        tf.let("a", "BK6", "ld_BK6(b6s, tk)")
-        tf.L(pick("F32", f"U32.is_eq(U32.mod(tk, 16), U32.div(U32.sub(j, {O['WPE']}), 16))",
-                  f"BK6_de(a, U32.mod(U32.sub(j, {O['WPE']}), 16))", "0.0"))
-
-    def qkv_out(off, fld):
-        return outer(off, "BK5", "a", fld, "b5s", "b", "n1", "r1s", "R1")
-
-    gstage("g3", [("r1s", arrT("R1")), ("b5s", arrT("BK5")), ("b6s", arrT("BK6")), ("tks", arrT("U32"))], [
-        (512, term_embed),
-        (O["LN1G"], term_wpe),
-        (O["LN1B"], vec(O["LN1G"], "BK6", "dn1", "b6s", ("R1", "xh1", "r1s"))),
-        (O["WQ"], vec(O["LN1B"], "BK6", "dn1", "b6s")),
-        (O["BQ"], qkv_out(O["WQ"], "dq")),
-        (O["WK"], vec(O["BQ"], "BK5", "dq", "b5s")),
-        (O["BK"], qkv_out(O["WK"], "dk")),
-        (O["WV"], vec(O["BK"], "BK5", "dk", "b5s")),
-        (O["BV"], qkv_out(O["WV"], "dv")),
-        (O["WO"], vec(O["BV"], "BK5", "dv", "b5s")),
-    ])
-
-    # ================================================================= Adam on the state [p | m | v | step loss]
-    ga = f"g1s, g2s, g3s"
-    f = Fn("gsum", ["+n: Nat", "+c: U32", "+j: U32", f"+g1s: {arrT('F32')}", f"+g2s: {arrT('F32')}", f"+g3s: {arrT('F32')}", "+acc: F32"], "F32")
+    # ================================================================= reduce chunks, Adam
+    Q = min(32, K)
+    QD = int(math.log2(Q))
+    GD2 = 8 + QD
+    per = K // Q
+    # gred: thread (job r, group q) adds the gradient chunks q*per .. (q+1)*per-1 of the three gradient stages
+    gtp = [f"+g1s: {arrT('V16')}", f"+g2s: {arrT('V16')}", f"+g3s: {arrT('V16')}"]
+    f = Fn("gred_s", ["+x: V16", "+y: V16", "+z: V16", "+acc: V16"], "V16")
+    f.match(["x"], [pat16("x")])
+    f.match(["y"], [pat16("y")])
+    f.match(["z"], [pat16("z")])
+    f.match(["acc"], [pat16("a")])
+    f.L("V16{" + ", ".join(add(add(add(nm("a", c), nm("x", c)), nm("y", c)), nm("z", c)) for c in range(16)) + "}")
+    out.append(f.text())
+    f = Fn("gred_l", ["+n: Nat", "+k: U32"] + gtp + ["+acc: V16"], "V16")
     f.L("match n:")
     f.L("  case 0n:")
     f.L("    acc")
     f.L("  case 1n+p:")
-    rd = lambda g: f"A.Arr.get(F32, {GD}n, {g}, (c * 4096 + j : U32), 0.0)"
-    f.L(f"    gsum(p, (c + 1 : U32), j, {ga}, {add(add(add('acc', rd('g1s')), rd('g2s')), rd('g3s'))})")
+    ld = lambda g: f"A.Arr.get(V16, {GD}n, {g}, k, z16())"
+    f.L(f"    gred_l(p, (k + 1 : U32), g1s, g2s, g3s, gred_s({ld('g1s')}, {ld('g2s')}, {ld('g3s')}, acc))")
+    out.append(f.text())
+    f = Fn("gred", ["+i: U32"] + gtp, "V16")
+    f.let("r", "U32", f"U32.div(i, {Q})")
+    f.let("q", "U32", f"U32.mod(i, {Q})")
+    f.L(f"gred_l({per}n, (r * {K} + q * {per} : U32), g1s, g2s, g3s, z16())")
     out.append(f.text())
 
-    f = Fn("lsum", ["+n: Nat", "+c: U32", f"+g1s: {arrT('F32')}", "+acc: F32"], "F32")
+    ga = "grs"
+    f = Fn("gsum", ["+n: Nat", "+c: U32", "+r: U32", "+col: U32", f"+grs: {arrT('V16')}", "+acc: F32"], "F32")
     f.L("match n:")
     f.L("  case 0n:")
     f.L("    acc")
     f.L("  case 1n+p:")
-    f.L(f"    lsum(p, (c + 1 : U32), g1s, {add('acc', f'A.Arr.get(F32, {GD}n, g1s, (c * 4096 + {NPARAM} : U32), 0.0)')})")
+    f.L(f"    gsum(p, (c + 1 : U32), r, col, grs, {add('acc', f'v16sel(A.Arr.get(V16, {GD2}n, grs, (r * {Q} + c : U32), z16()), col)')})")
     out.append(f.text())
 
-    f = Fn("upd", ["+sel: U32", "+j: U32", f"+s: {arrT('F32')}", f"+g1s: {arrT('F32')}", f"+g2s: {arrT('F32')}", f"+g3s: {arrT('F32')}"], "F32")
-    f.let("g", "F32", mul(f"gsum({K}n, 0, j, {ga}, 0.0)", lit(inv_bt)))
+    f = Fn("upd", ["+sel: U32", "+j: U32", f"+s: {arrT('F32')}", f"+grs: {arrT('V16')}"], "F32")
+    f.let("g", "F32", mul(f"gsum({Q}n, 0, U32.div(j, 16), U32.mod(j, 16), grs, 0.0)", lit(inv_bt)))
     f.let("st", "F32", add("pp(s, 12288)", "1.0"))
     f.let("mo", "F32", pp("(4096 + j : U32)"))
     f.let("vo", "F32", pp("(8192 + j : U32)"))
@@ -640,13 +734,13 @@ def gen(B):
     f.L(pick("F32", "U32.is_eq(sel, 0)", "pn", pick("F32", "U32.is_eq(sel, 1)", "mm", "vv")))
     out.append(f.text())
 
-    f = Fn("adam", ["+i: U32", f"+s: {arrT('F32')}", f"+g1s: {arrT('F32')}", f"+g2s: {arrT('F32')}", f"+g3s: {arrT('F32')}"], "F32")
+    f = Fn("adam", ["+i: U32", f"+s: {arrT('F32')}", f"+grs: {arrT('V16')}"], "F32")
     f.let("j", "U32", "U32.mod(i, 4096)")
     f.let("sel", "U32", "U32.div(i, 4096)")
     keep = pp("i")
-    param = pick("F32", f"U32.is_lt(j, {NPARAM})", f"upd(sel, j, s, {ga})", keep)
+    param = pick("F32", f"U32.is_lt(j, {NPARAM})", "upd(sel, j, s, grs)", keep)
     misc = pick("F32", "U32.is_eq(i, 12288)", add("pp(s, 12288)", "1.0"),
-                pick("F32", "U32.is_eq(i, 12289)", mul(f"lsum({K}n, 0, g1s, 0.0)", lit(inv_bt)), "0.0"))
+                pick("F32", "U32.is_eq(i, 12289)", mul(f"gsum({Q}n, 0, {NPARAM // 16}, 0, grs, 0.0)", lit(inv_bt)), "0.0"))
     f.L(pick("F32", "U32.is_lt(i, 12288)", param, misc))
     out.append(f.text())
 
@@ -660,8 +754,9 @@ def gen(B):
         ("b4s", "BK4", "b4", "F32, BK3, QKV, AT", "s, b3s, qkvs, ats", DN),
         ("b5s", "BK5", "b5", "QKV, AT, BK4", "qkvs, ats, b4s", DN),
         ("b6s", "BK6", "b6", "F32, BK5, BK3, R1", "s, b5s, b3s, r1s", DN),
-        ("g1s", "F32", "g1", "R3, BK1, MU", "r3s, b1s, mus", GD), ("g2s", "F32", "g2", "AT, R2, DF, BK3", "ats, r2s, dfs, b3s", GD),
-        ("g3s", "F32", "g3", "R1, BK5, BK6, U32", "r1s, b5s, b6s, tk", GD),
+        ("g1s", "V16", "g1", "R3, BK1, MU", "r3s, b1s, mus", GD), ("g2s", "V16", "g2", "AT, R2, DF, BK3", "ats, r2s, dfs, b3s", GD),
+        ("g3s", "V16", "g3", "R1, BK5, BK6, U32", "r1s, b5s, b6s, tk", GD),
+        ("grs", "V16", "gred", "V16, V16, V16", "g1s, g2s, g3s", GD2),
     ]
     out.append("def s_depth() -> Nat:\n  14n\n")
     out.append("def s_init(j: U32) -> F32:\n  0.0\n")
@@ -673,7 +768,7 @@ def gen(B):
         n = len(types)
         targs = ", ".join(f"~{t}" for t in types) + f", ~{ty}"
         lines.append(f"  +{var} : {arrT(ty)} = A.Arr.map{n}({targs}, ~{fn}, {d}n, {args}, 0)")
-    lines.append(f"  A.Arr.map4(~F32, ~F32, ~F32, ~F32, ~F32, ~adam, 14n, s, g1s, g2s, g3s, 0)")
+    lines.append(f"  A.Arr.map2(~F32, ~V16, ~F32, ~adam, 14n, s, grs, 0)")
     out.append("\n".join(lines) + "\n")
     return out
 

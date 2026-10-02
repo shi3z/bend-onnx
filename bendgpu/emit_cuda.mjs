@@ -486,7 +486,7 @@ static __host__ __device__ __forceinline__ void* bg_alloc(bg_arena* ar, size_t n
     };
     const emitMap = (m, outName) => {
       setup.push(`uint32_t n_${outName} = 1u << (${m.dExpr}); ${m.outC}* ${outName}; CK(cudaMalloc(&${outName}, (size_t)n_${outName} * sizeof(${m.outC})));`);
-      launch.push(`km_${cname(m.f)}<<<(bg_res(n_${outName}) + 255) / 256, 256>>>(${outName}, n_${outName}, arena${m.bufs.map((b) => ", " + b).join("")});`);
+      launch.push(`km_${cname(m.f)}<<<(BG_GRID(n_${outName}) + 255) / 256, 256>>>(${outName}, n_${outName}, arena${m.bufs.map((b) => ", " + b).join("")});`);
     };
     let outName = null, outC = outElem;
     while (true) {
@@ -510,7 +510,9 @@ static __host__ __device__ __forceinline__ void* bg_alloc(bg_arena* ar, size_t n
       break;
     }
     const outInf = ["float", "uint32_t", "bool"].includes(outC) ? null : [...T.reg.values()].find((i) => i.name === outC);
-    let out = commonKernels();
+    // heap-free programs never touch the per-thread arenas, so a stage may use as many threads as it has elements
+    const usesHeap = [...T.reg.values()].some((i) => i.kind === "heap");
+    let out = commonKernels() + `#define BG_GRID(n) ${usesHeap ? "bg_res(n)" : "(n)"}\n`;
     for (const [f, kd] of kernels) {
       const bs = kd.inElems.map((e, i) => `, const ${e}* b${i}`).join("");
       const as = kd.inElems.map((_, i) => `, b${i}`).join("");
@@ -571,6 +573,14 @@ int main(int argc, char** argv) {
   for (int k = 0; k < steps; k++) if (step()) return 1;
   cudaEventRecord(e1); CK(cudaEventSynchronize(e1)); float ms; cudaEventElapsedTime(&ms, e0, e1);
   CK(cudaGetLastError());
+  if (getenv("BG_PROF")) {
+    cudaEvent_t ev[${launch.length + 1}]; for (auto& e : ev) cudaEventCreate(&e);
+    cudaEventRecord(ev[0]);
+    ${launch.map((l, k) => `${l} cudaEventRecord(ev[${k + 1}]);`).join("\n    ")}
+    CK(cudaEventSynchronize(ev[${launch.length}]));
+    const char* nm[] = {${launch.map((l) => JSON.stringify(/km_(\w+)<<</.exec(l)[1])).join(", ")}};
+    for (int k = 0; k < ${launch.length}; k++) { float ms; cudaEventElapsedTime(&ms, ev[k], ev[k + 1]); printf("  %-28s %9.4f ms\\n", nm[k], ms); }
+  }
   float v; CK(cudaMemcpy(&v, d_${s0.k} + probe, 4, cudaMemcpyDeviceToHost));
   printf("ms_per_step %.4f  (%zu launches per step)  probe %.7f\\n", ms / steps, (size_t)${launch.length}, v);
   return 0;
