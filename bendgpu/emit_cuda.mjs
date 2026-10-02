@@ -529,6 +529,55 @@ static __host__ __device__ __forceinline__ void* bg_alloc(bg_arena* ar, size_t n
     const showProbe = outInf
       ? outInf.ctors[0].fields.map((f, i) => `printf(" %.7g", (double)h[i].f${i});`).join(" ")
       : `printf(" %.7g", (double)h[i]);`;
+    if (entry === "train") {
+      // iterate mode: the first parameter is the state, the result is the next state; run it for argv[1] steps
+      //   ./prog steps probe_index [state.bin [verify]]
+      const s0 = ps[0];
+      out += `
+int main(int argc, char** argv) {
+  int steps = argc > 1 ? atoi(argv[1]) : 10, probe = argc > 2 ? atoi(argv[2]) : 0;
+  const char* pf = argc > 3 ? argv[3] : nullptr; bool verify = argc > 4;
+  CK(cudaDeviceSetLimit(cudaLimitStackSize, (size_t)BG_STACK_KB * 1024));
+  char* arena; CK(cudaMalloc(&arena, (size_t)BG_RESIDENT * BG_ARENA_BYTES));${inSetup}
+  ${setup.join("\n  ")}
+  if (pf) {
+    std::vector<float> h(n_${s0.k}, 0.f); FILE* fp = fopen(pf, "rb"); if (!fp) { fprintf(stderr, "cannot read %s\\n", pf); return 1; }
+    size_t got = fread(h.data(), 4, h.size(), fp); (void)got; fclose(fp);
+    CK(cudaMemcpy(d_${s0.k}, h.data(), h.size() * 4, cudaMemcpyHostToDevice));
+  }
+  CK(cudaDeviceSynchronize());
+  auto step = [&]() -> int {
+    ${launch.join("\n    ")}
+    CK(cudaMemcpy(d_${s0.k}, ${outName}, (size_t)n_${s0.k} * sizeof(${s0.elem}), cudaMemcpyDeviceToDevice));
+    return 0;
+  };
+  if (verify) {
+    for (int k = 0; k < steps; k++) {
+      if (step()) return 1;
+      CK(cudaDeviceSynchronize());
+      float v; CK(cudaMemcpy(&v, d_${s0.k} + probe, 4, cudaMemcpyDeviceToHost));
+      printf("step %d loss %.7f\\n", k, v);
+    }
+    if (const char* df = getenv("BG_DUMP")) {
+      std::vector<float> h(n_${s0.k}); CK(cudaMemcpy(h.data(), d_${s0.k}, h.size() * 4, cudaMemcpyDeviceToHost));
+      FILE* fp = fopen(df, "wb"); fwrite(h.data(), 4, h.size(), fp); fclose(fp);
+    }
+    return 0;
+  }
+  for (int k = 0; k < 3; k++) if (step()) return 1;
+  CK(cudaDeviceSynchronize());
+  cudaEvent_t e0, e1; cudaEventCreate(&e0); cudaEventCreate(&e1);
+  cudaEventRecord(e0);
+  for (int k = 0; k < steps; k++) if (step()) return 1;
+  cudaEventRecord(e1); CK(cudaEventSynchronize(e1)); float ms; cudaEventElapsedTime(&ms, e0, e1);
+  CK(cudaGetLastError());
+  float v; CK(cudaMemcpy(&v, d_${s0.k} + probe, 4, cudaMemcpyDeviceToHost));
+  printf("ms_per_step %.4f  (%zu launches per step)  probe %.7f\\n", ms / steps, (size_t)${launch.length}, v);
+  return 0;
+}
+`;
+      return out;
+    }
     out += `
 int main() {
   CK(cudaDeviceSetLimit(cudaLimitStackSize, (size_t)BG_STACK_KB * 1024));

@@ -1,0 +1,5652 @@
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+{
+  '$': 'Err',
+  bok: {
+    tlds: [Object: null prototype] {},
+    ctrs: [Object: null prototype] {},
+    order: [],
+    hols: 0,
+    tmps: [Object: null prototype] {}
+  },
+  ctx: { '$': 'Emp' },
+  exp: 'a match on a parameter or field (this name is a def or a consumed binder: give the value its own def)',
+  obs: undefined,
+  spn: {
+    file: {
+      book: {
+        tlds: [Object: null prototype] {
+          Empty: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [], b: true },
+          Unit: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array], b: true },
+          Bool: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array], b: true },
+          Cmp: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array], b: true },
+          Either: { '$': 'ADT', n: 4, g: 2, T: [Object], c: [Array], b: true },
+          Sigma: { '$': 'ADT', n: 4, g: 2, T: [Object], c: [Array], b: true },
+          Nat: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array], b: true },
+          Maybe: { '$': 'ADT', n: 2, g: 1, T: [Object], c: [Array], b: true },
+          Result: { '$': 'ADT', n: 4, g: 2, T: [Object], c: [Array], b: true },
+          List: { '$': 'ADT', n: 2, g: 1, T: [Object], c: [Array], b: true },
+          'Word.Nil': { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array], b: true },
+          'Word.Con': { '$': 'ADT', n: 1, g: 0, T: [Object], c: [Array], b: true },
+          Word: {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          U32: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array], b: true },
+          F32: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array], b: true },
+          Char: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array], b: true },
+          String: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array], b: true },
+          Array: { '$': 'ADT', n: 1, g: 0, T: [Object], c: [Array], b: true },
+          Image: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array], b: true },
+          Event: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array], b: true },
+          Map: { '$': 'ADT', n: 2, g: 1, T: [Object], c: [Array], b: true },
+          File: {
+            '$': 'Def',
+            n: 0,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          Socket: {
+            '$': 'Def',
+            n: 0,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          Listener: {
+            '$': 'Def',
+            n: 0,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          Window: {
+            '$': 'Def',
+            n: 0,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          Audio: {
+            '$': 'Def',
+            n: 0,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          Chan: {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'IO.OP': { '$': 'ADT', n: 1, g: 0, T: [Object], c: [Array], b: true },
+          App: { '$': 'ADT', n: 1, g: 0, T: [Object], c: [Array], b: true },
+          Pair: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          Exists: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          Or: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Pair.fst': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Pair.snd': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          IO: {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'IO.pure': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'IO.bind': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'IO.print': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'IO.write': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'IO.print_err': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'IO.get_env': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'IO.args': {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Process.run': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'IO.die': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'IO.pass': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'IO.try': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'IO.random_u32': {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'IO.spawn': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'IO.sleep': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'IO.now': {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'IO.thread_count': {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Chan.new': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Chan.send': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Chan.recv': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Chan.close': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'IO.fork.go': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'IO.fork': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'IO.join.go': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'IO.join': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'IO.within': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'File.open': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'File.read': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'File.read_bytes': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'File.read_at': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'File.size': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'File.write': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'File.write_bytes': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'File.close': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'TCP.listen': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'TCP.accept': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'TCP.connect': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'TCP.send': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'TCP.recv': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'TCP.send_bytes': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'TCP.recv_bytes': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'TCP.poll': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'UDP.bind': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'UDP.send_to': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'UDP.recv_from': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'UDP.poll': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Socket.close': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Listener.close': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Window.open': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Window.frame': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Window.set_title': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Window.grab': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Window.close': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Audio.open': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Audio.write': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Audio.close': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false,
+            i: [Array],
+            b: true
+          },
+          'Equal.cong': {
+            '$': 'Def',
+            n: 6,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Equal.sym': {
+            '$': 'Def',
+            n: 4,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Equal.trans': {
+            '$': 'Def',
+            n: 6,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Empty.absurd': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Bool.not': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Bool.and': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Bool.or': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Bool.xor': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Bool.cmp': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Bool.full_add': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Bool.pick': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Bool.to_u32': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Cmp.is_lt': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Cmp.is_eq': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Cmp.is_gt': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Cmp.is_le': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Cmp.is_ge': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.double': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.add': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.sub': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.mul': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.divmod.go': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.divmod': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.cmp': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.is_lt': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.is_eq': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.is_ne': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.is_le': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.is_gt': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.is_ge': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.min': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.max': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.ge_refl': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.max_ge_l': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.max_ge_r': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.div': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.mod': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.pow': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Maybe.pure': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Maybe.bind': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Maybe.default': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Maybe.is_some': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Maybe.is_none': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Maybe.map': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Maybe.or': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Result.pure': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Result.bind': {
+            '$': 'Def',
+            n: 7,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Result.default': {
+            '$': 'Def',
+            n: 6,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Result.is_done': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Result.is_fail': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Result.map': {
+            '$': 'Def',
+            n: 7,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.map': {
+            '$': 'Def',
+            n: 4,
+            x: 3,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.length': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.append': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.concat': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.reverse.go': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.reverse': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.is_empty': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.head': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.tail': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.last.go': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.last': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.get': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.set': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.take': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.drop': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.zip': {
+            '$': 'Def',
+            n: 6,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.range.go': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.range': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.replicate': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.filter.put': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.filter': {
+            '$': 'Def',
+            n: 3,
+            x: 2,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.foldl': {
+            '$': 'Def',
+            n: 6,
+            x: 4,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.foldr': {
+            '$': 'Def',
+            n: 6,
+            x: 4,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.any': {
+            '$': 'Def',
+            n: 4,
+            x: 3,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.all': {
+            '$': 'Def',
+            n: 4,
+            x: 3,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.find.put': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.find': {
+            '$': 'Def',
+            n: 3,
+            x: 2,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.contains': {
+            '$': 'Def',
+            n: 4,
+            x: 2,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.merge.step': {
+            '$': 'Def',
+            n: 7,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.merge.go': {
+            '$': 'Def',
+            n: 4,
+            x: 2,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.sort.runs': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.sort.pass': {
+            '$': 'Def',
+            n: 4,
+            x: 2,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.sort.go': {
+            '$': 'Def',
+            n: 5,
+            x: 2,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.sort': {
+            '$': 'Def',
+            n: 3,
+            x: 2,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.for_each': {
+            '$': 'Def',
+            n: 4,
+            x: 3,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.zero': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.not': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.and': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.or': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.xor': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.shl.put': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.shl': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.shl.out.con': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.shl.out': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.shr.pad': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.shr': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.cmp.fin': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.cmp': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.inc': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.adc': {
+            '$': 'Def',
+            n: 5,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.adc.con': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.add': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.sub': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.add_comm.arm': {
+            '$': 'Def',
+            n: 5,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.add_comm.go': {
+            '$': 'Def',
+            n: 4,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.add_comm': {
+            '$': 'Def',
+            n: 3,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.to_nat': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.mul.go': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Word.mul': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.inc': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.add': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.add_comm': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.sub': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.mul': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.not': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.and': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.or': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.xor': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.shl': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.shr': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.shln': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.shrn': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.cmp': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.is_eq': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.is_ne': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.is_lt': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.is_le': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.is_gt': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.is_ge': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.is_zero': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.to_nat': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.from_nat': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.log2.go': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.log2': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.divmod.go.fin': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.divmod.go.shl': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.divmod.go.rec': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.divmod.go': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.div.fin': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.div.if': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.div': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.mod.fin': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.mod.if': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.mod': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.min': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.max': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.clamp': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.pow': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.is_even': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.to_f32': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.to_u32': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.add': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.sub': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.mul': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.div': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.mod': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.pow': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.atan2': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.neg': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.abs': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.sqrt': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.exp': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.log': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.log2': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.log10': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.sin': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.cos': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.tan': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.asin': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.acos': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.atan': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.sinh': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.cosh': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.tanh': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.floor': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.ceil': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.trunc': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.is_eq': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.is_ne': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.is_lt': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.is_le': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.is_gt': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.is_ge': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.show': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.bits': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.read': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'F32.min': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'F32.max': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'F32.clamp': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'F32.lerp': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'F32.square': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'F32.hypot': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'F32.round': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'F32.pi': {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'F32.from_nat': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'F32.to_nat': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Char.cmp': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Char.to_u32': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Char.from_u32': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Char.is_eq': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Char.is_digit': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Char.is_upper': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Char.is_lower': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Char.is_alpha': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Char.is_space': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Char.to_upper': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Char.to_lower': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.append': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.cmp.rec': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.cmp': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.cmp.fin': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.eq': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.length': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.is_empty': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.reverse.go': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.reverse': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.order': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.is_lt': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.is_le': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.is_gt': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.is_ge': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.starts_with': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.starts_with.if': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.ends_with': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.contains': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.contains.if': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.take': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.drop': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.get': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.to_list': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.from_list': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.concat': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.join.go': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.join': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.split.push': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.split.fin': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.split': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.lines': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.repeat': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.to_upper': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.to_lower': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.trim_start': {
+            '$': 'Def',
+            n: 1,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.trim_start.if': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.trim_end': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'String.trim': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.show.put': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.show.go': {
+            '$': 'Def',
+            n: 3,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.show.fin': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.show': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.read.go': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.read.if': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.read.trim': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.read.fits': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.read.gate': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Nat.read': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.show.go': {
+            '$': 'Def',
+            n: 3,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.show.fin': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.show.if': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.show': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.read.go': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.read.if': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'U32.read': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Bool.show': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Char.show': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Maybe.show': {
+            '$': 'Def',
+            n: 4,
+            x: 3,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.show.go': {
+            '$': 'Def',
+            n: 4,
+            x: 3,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'List.show': {
+            '$': 'Def',
+            n: 4,
+            x: 3,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.size.node': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.size': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.swap.lo': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.swap.hi': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.swap.go': {
+            '$': 'Def',
+            n: 6,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.swap.at': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.swap': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.clone.node': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.clone': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.fork': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: true,
+            b: true,
+            e: [Object]
+          },
+          'Array.join': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: true,
+            b: true,
+            e: [Object]
+          },
+          'Array.atomic.add': {
+            '$': 'Def',
+            n: 3,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'Array.atomic.min': {
+            '$': 'Def',
+            n: 3,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'Array.atomic.max': {
+            '$': 'Def',
+            n: 3,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'Array.atomic.and': {
+            '$': 'Def',
+            n: 3,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'Array.atomic.or': {
+            '$': 'Def',
+            n: 3,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'Array.atomic.xor': {
+            '$': 'Def',
+            n: 3,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'Array.atomic.exch': {
+            '$': 'Def',
+            n: 3,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'Array.atomic.cas': {
+            '$': 'Def',
+            n: 4,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'Array.atomic.fadd': {
+            '$': 'Def',
+            n: 3,
+            T: [Object],
+            v: null,
+            x: 0,
+            m: '',
+            b: true
+          },
+          'Array.new': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.set.fin': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.set': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.get.go': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.get.at': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.get': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.to_list.go': {
+            '$': 'Def',
+            n: 3,
+            x: 1,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.to_list': {
+            '$': 'Def',
+            n: 2,
+            x: 1,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.map.go': {
+            '$': 'Def',
+            n: 7,
+            x: 3,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.map.at': {
+            '$': 'Def',
+            n: 5,
+            x: 3,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.map.seed': {
+            '$': 'Def',
+            n: 4,
+            x: 3,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Array.map': {
+            '$': 'Def',
+            n: 4,
+            x: 3,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.bit.u': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.bit.chr': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.bit.go.chr': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.bit.go.rec': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.bit.go': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.bit.at': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.bit': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.msb.u': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.msb.u.if': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.diff.chr': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.diff.step': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.diff': {
+            '$': 'Def',
+            n: 2,
+            T: [Object],
+            v: [Object],
+            x: 0,
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.diff.fin': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.new': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.put.go': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.put': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.ins.splice.bit': {
+            '$': 'Def',
+            n: 6,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.ins.splice': {
+            '$': 'Def',
+            n: 6,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.ins.go': {
+            '$': 'Def',
+            n: 7,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.ins': {
+            '$': 'Def',
+            n: 6,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.lo': {
+            '$': 'Def',
+            n: 6,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.hi': {
+            '$': 'Def',
+            n: 6,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.seek.go': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.seek': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.set.fin.go': {
+            '$': 'Def',
+            n: 6,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.set.fin': {
+            '$': 'Def',
+            n: 7,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.set.go': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.set': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.has.leaf': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.has.go': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.has': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.get.leaf': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.get.go': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.get': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.pop.lo': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.pop.hi': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.pop.leaf': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.pop.go': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.pop': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.del.fin': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.del': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.to_list.go': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.to_list': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.keys.go': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.keys': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.from_list.go': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.from_list': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.union': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.size': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.values.go': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Map.values': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          Set: {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Set.new': {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Set.add': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Set.has': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Set.del': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Set.size': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Set.to_list': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Set.from_list.go': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Set.from_list': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Image.sink': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Image.drop.join': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Image.free': {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'Image.drop': {
+            '$': 'Def',
+            n: 1,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'App.next': {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'App.turn': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'App.draw': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'App.step': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'App.loop': {
+            '$': 'Def',
+            n: 5,
+            x: 2,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'App.run': {
+            '$': 'Def',
+            n: 6,
+            x: 2,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'App.more': {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'App.fold': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          'App.play': {
+            '$': 'Def',
+            n: 4,
+            x: 2,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false,
+            b: true,
+            e: [Object]
+          },
+          '../prelude/arr.Arr': { '$': 'ADT', n: 2, g: 1, T: [Object], c: [Array] },
+          '../prelude/arr.Arr.get': {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '../prelude/arr',
+            u: false
+          },
+          '../prelude/arr.Arr.build': {
+            '$': 'Def',
+            n: 4,
+            x: 2,
+            T: [Object],
+            v: [Object],
+            m: '../prelude/arr',
+            u: false
+          },
+          '../prelude/arr.Arr.map1': {
+            '$': 'Def',
+            n: 6,
+            x: 3,
+            T: [Object],
+            v: [Object],
+            m: '../prelude/arr',
+            u: false
+          },
+          '../prelude/arr.Arr.map2': {
+            '$': 'Def',
+            n: 8,
+            x: 4,
+            T: [Object],
+            v: [Object],
+            m: '../prelude/arr',
+            u: false
+          },
+          '../prelude/arr.Arr.map3': {
+            '$': 'Def',
+            n: 10,
+            x: 5,
+            T: [Object],
+            v: [Object],
+            m: '../prelude/arr',
+            u: false
+          },
+          '../prelude/arr.Arr.map4': {
+            '$': 'Def',
+            n: 12,
+            x: 6,
+            T: [Object],
+            v: [Object],
+            m: '../prelude/arr',
+            u: false
+          },
+          V16: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          V32: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          V64: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          R1: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          QKV: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          AT: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          R2: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          MU: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          R3: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          BK1: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          DF: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          BK3: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          BK4: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          BK5: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          BK6: { '$': 'ADT', n: 0, g: 0, T: [Object], c: [Array] },
+          pp: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          z_R1: {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          ld_R1: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          z_QKV: {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          ld_QKV: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          z_AT: {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          ld_AT: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          z_R2: {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          ld_R2: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          z_MU: {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          ld_MU: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          z_R3: {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          ld_R3: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          z_BK1: {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          ld_BK1: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          z_DF: {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          ld_DF: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          z_BK3: {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          ld_BK3: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          z_BK4: {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          ld_BK4: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          z_BK5: {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          ld_BK5: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          z_BK6: {
+            '$': 'Def',
+            n: 0,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          ld_BK6: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          R1_e: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          R1_xh1: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          R1_n1: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          QKV_q: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          QKV_k: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          QKV_v: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          AT_a: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          AT_ctx: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          R2_r1: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          R2_xh2: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          R2_n2: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          MU_f: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          MU_h: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          R3_xhf: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          R3_nf: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          R3_dl: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          BK1_dnf: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          BK1_dr2: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          DF_df: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          BK3_dn2: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          BK3_dr1: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          BK4_dctx: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          BK4_ds: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          BK5_dq: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          BK5_dk: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          BK5_dv: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          BK6_dn1: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          BK6_de: {
+            '$': 'Def',
+            n: 2,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          f1: {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          f2__b: {
+            '$': 'Def',
+            n: 4,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          f2: {
+            '$': 'Def',
+            n: 3,
+            x: 0,
+            T: [Object],
+            v: [Object],
+            m: '',
+            u: false
+          },
+          att_sc__b: {
+            '$': 'Def',
+            n: 5,
+            x: 0,
+            T: [Object],
+            v: null,
+            m: '',
+            u: false
+          }
+        },
+        ctrs: [Object: null prototype] {
+          Unit: { k: 'Unit', n: 0, T: [Object] },
+          False: { k: 'False', n: 0, T: [Object] },
+          True: { k: 'True', n: 0, T: [Object] },
+          LT: { k: 'LT', n: 0, T: [Object] },
+          EQ: { k: 'EQ', n: 0, T: [Object] },
+          GT: { k: 'GT', n: 0, T: [Object] },
+          Inl: { k: 'Inl', n: 1, T: [Object] },
+          Inr: { k: 'Inr', n: 1, T: [Object] },
+          Tuple: { k: 'Tuple', n: 2, T: [Object] },
+          Zero: { k: 'Zero', n: 0, T: [Object] },
+          Succ: { k: 'Succ', n: 1, T: [Object] },
+          None: { k: 'None', n: 0, T: [Object] },
+          Some: { k: 'Some', n: 1, T: [Object] },
+          Fail: { k: 'Fail', n: 1, T: [Object] },
+          Done: { k: 'Done', n: 1, T: [Object] },
+          Nil: { k: 'Nil', n: 0, T: [Object] },
+          Con: { k: 'Con', n: 2, T: [Object] },
+          WNil: { k: 'WNil', n: 0, T: [Object] },
+          WCon: { k: 'WCon', n: 2, T: [Object] },
+          U32: { k: 'U32', n: 1, T: [Object] },
+          F32: { k: 'F32', n: 1, T: [Object] },
+          Chr: { k: 'Chr', n: 1, T: [Object] },
+          SNil: { k: 'SNil', n: 0, T: [Object] },
+          SCon: { k: 'SCon', n: 2, T: [Object] },
+          ALeaf: { k: 'ALeaf', n: 1, T: [Object] },
+          ANode: { k: 'ANode', n: 2, T: [Object] },
+          Pix: { k: 'Pix', n: 1, T: [Object] },
+          Qua: { k: 'Qua', n: 4, T: [Object] },
+          Key: { k: 'Key', n: 2, T: [Object] },
+          Mouse: { k: 'Mouse', n: 4, T: [Object] },
+          Move: { k: 'Move', n: 2, T: [Object] },
+          Look: { k: 'Look', n: 2, T: [Object] },
+          Scroll: { k: 'Scroll', n: 4, T: [Object] },
+          Close: { k: 'Close', n: 0, T: [Object] },
+          MTip: { k: 'MTip', n: 0, T: [Object] },
+          MLeaf: { k: 'MLeaf', n: 2, T: [Object] },
+          MNode: { k: 'MNode', n: 3, T: [Object] },
+          Emit: { k: 'Emit', n: 1, T: [Object] },
+          Halt: { k: 'Halt', n: 2, T: [Object] },
+          App: { k: 'App', n: 2, T: [Object] },
+          '../prelude/arr.ArrLeaf': { k: '../prelude/arr.ArrLeaf', n: 1, T: [Object] },
+          '../prelude/arr.ArrNode': { k: '../prelude/arr.ArrNode', n: 2, T: [Object] },
+          V16: { k: 'V16', n: 16, T: [Object] },
+          V32: { k: 'V32', n: 2, T: [Object] },
+          V64: { k: 'V64', n: 4, T: [Object] },
+          R1: { k: 'R1', n: 4, T: [Object] },
+          QKV: { k: 'QKV', n: 3, T: [Object] },
+          AT: { k: 'AT', n: 2, T: [Object] },
+          R2: { k: 'R2', n: 4, T: [Object] },
+          MU: { k: 'MU', n: 2, T: [Object] },
+          R3: { k: 'R3', n: 5, T: [Object] },
+          BK1: { k: 'BK1', n: 2, T: [Object] },
+          DF: { k: 'DF', n: 1, T: [Object] },
+          BK3: { k: 'BK3', n: 2, T: [Object] },
+          BK4: { k: 'BK4', n: 2, T: [Object] },
+          BK5: { k: 'BK5', n: 3, T: [Object] },
+          BK6: { k: 'BK6', n: 2, T: [Object] }
+        },
+        order: [
+          'Empty',            'Unit',           'Bool',
+          'Cmp',              'Either',         'Sigma',
+          'Nat',              'Maybe',          'Result',
+          'List',             'Word.Nil',       'Word.Con',
+          'Word',             'U32',            'F32',
+          'Char',             'String',         'Array',
+          'Image',            'Event',          'Map',
+          'File',             'Socket',         'Listener',
+          'Window',           'Audio',          'Chan',
+          'IO.OP',            'App',            'Pair',
+          'Exists',           'Or',             'Pair.fst',
+          'Pair.snd',         'IO',             'IO.pure',
+          'IO.bind',          'IO.print',       'IO.write',
+          'IO.print_err',     'IO.get_env',     'IO.args',
+          'Process.run',      'IO.die',         'IO.pass',
+          'IO.try',           'IO.random_u32',  'IO.spawn',
+          'IO.sleep',         'IO.now',         'IO.thread_count',
+          'Chan.new',         'Chan.send',      'Chan.recv',
+          'Chan.close',       'IO.fork.go',     'IO.fork',
+          'IO.join.go',       'IO.join',        'IO.within',
+          'File.open',        'File.read',      'File.read_bytes',
+          'File.read_at',     'File.size',      'File.write',
+          'File.write_bytes', 'File.close',     'TCP.listen',
+          'TCP.accept',       'TCP.connect',    'TCP.send',
+          'TCP.recv',         'TCP.send_bytes', 'TCP.recv_bytes',
+          'TCP.poll',         'UDP.bind',       'UDP.send_to',
+          'UDP.recv_from',    'UDP.poll',       'Socket.close',
+          'Listener.close',   'Window.open',    'Window.frame',
+          'Window.set_title', 'Window.grab',    'Window.close',
+          'Audio.open',       'Audio.write',    'Audio.close',
+          'Equal.cong',       'Equal.cong',     'Equal.sym',
+          'Equal.sym',        'Equal.trans',    'Equal.trans',
+          'Empty.absurd',     'Bool.not',       'Bool.and',
+          'Bool.or',
+          ... 462 more items
+        ],
+        hols: 0,
+        tmps: [Object: null prototype] {}
+      },
+      dir: '/home/shi3z/git/bend-onnx/bendgpu/nanogpt/',
+      str: '\n' +
+        '\n' +
+        '\n' +
+        '# generated by bendgpu/nanogpt/gen.py -- do not edit\n' +
+        '\n' +
+        'type V16 is Data:\n' +
+        '  V16{v0: F32, v1: F32, v2: F32, v3: F32, v4: F32, v5: F32, v6: F32, v7: F32, v8: F32, v9: F32, v10: F32, v11: F32, v12: F32, v13: F32, v14: F32, v15: F32}\n' +
+        '\n' +
+        'type V32 is Data:\n' +
+        '  V32{w0: V16, w1: V16}\n' +
+        '\n' +
+        'type V64 is Data:\n' +
+        '  V64{x0: V16, x1: V16, x2: V16, x3: V16}\n' +
+        '\n' +
+        'type R1 is Data:\n' +
+        '  R1{r1_e: V16, r1_xh1: V16, r1_n1: V16, r1_rs1: F32}\n' +
+        '\n' +
+        'type QKV is Data:\n' +
+        '  QKV{qkv_q: V16, qkv_k: V16, qkv_v: V16}\n' +
+        '\n' +
+        'type AT is Data:\n' +
+        '  AT{at_a: V16, at_ctx: V16}\n' +
+        '\n' +
+        'type R2 is Data:\n' +
+        '  R2{r2_r1: V16, r2_xh2: V16, r2_n2: V16, r2_rs2: F32}\n' +
+        '\n' +
+        'type MU is Data:\n' +
+        '  MU{mu_f: V64, mu_h: V64}\n' +
+        '\n' +
+        'type R3 is Data:\n' +
+        '  R3{r3_xhf: V16, r3_nf: V16, r3_rsf: F32, r3_dl: V32, r3_loss: F32}\n' +
+        '\n' +
+        'type BK1 is Data:\n' +
+        '  BK1{bk1_dnf: V16, bk1_dr2: V16}\n' +
+        '\n' +
+        'type DF is Data:\n' +
+        '  DF{df_df: V64}\n' +
+        '\n' +
+        'type BK3 is Data:\n' +
+        '  BK3{bk3_dn2: V16, bk3_dr1: V16}\n' +
+        '\n' +
+        'type BK4 is Data:\n' +
+        '  BK4{bk4_dctx: V16, bk4_ds: V16}\n' +
+        '\n' +
+        'type BK5 is Data:\n' +
+        '  BK5{bk5_dq: V16, bk5_dk: V16, bk5_dv: V16}\n' +
+        '\n' +
+        'type BK6 is Data:\n' +
+        '  BK6{bk6_dn1: V16, bk6_de: V16}\n' +
+        '\n' +
+        'def pp(+s: A.Arr<&2, F32>, +k: U32) -> F32:\n' +
+        '  A.Arr.get(F32, 12n, s, k, 0.0)\n' +
+        '\n' +
+        'def z_R1() -> R1:\n' +
+        '  R1{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, 0.0}\n' +
+        '\n' +
+        'def ld_R1(+a: A.Arr<&2, R1>, +k: U32) -> R1:\n' +
+        '  A.Arr.get(R1, 6n, a, k, z_R1())\n' +
+        '\n' +
+        'def z_QKV() -> QKV:\n' +
+        '  QKV{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}}\n' +
+        '\n' +
+        'def ld_QKV(+a: A.Arr<&2, QKV>, +k: U32) -> QKV:\n' +
+        '  A.Arr.get(QKV, 6n, a, k, z_QKV())\n' +
+        '\n' +
+        'def z_AT() -> AT:\n' +
+        '  AT{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}}\n' +
+        '\n' +
+        'def ld_AT(+a: A.Arr<&2, AT>, +k: U32) -> AT:\n' +
+        '  A.Arr.get(AT, 6n, a, k, z_AT())\n' +
+        '\n' +
+        'def z_R2() -> R2:\n' +
+        '  R2{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, 0.0}\n' +
+        '\n' +
+        'def ld_R2(+a: A.Arr<&2, R2>, +k: U32) -> R2:\n' +
+        '  A.Arr.get(R2, 6n, a, k, z_R2())\n' +
+        '\n' +
+        'def z_MU() -> MU:\n' +
+        '  MU{V64{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}}, V64{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}}}\n' +
+        '\n' +
+        'def ld_MU(+a: A.Arr<&2, MU>, +k: U32) -> MU:\n' +
+        '  A.Arr.get(MU, 6n, a, k, z_MU())\n' +
+        '\n' +
+        'def z_R3() -> R3:\n' +
+        '  R3{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, 0.0, V32{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}}, 0.0}\n' +
+        '\n' +
+        'def ld_R3(+a: A.Arr<&2, R3>, +k: U32) -> R3:\n' +
+        '  A.Arr.get(R3, 6n, a, k, z_R3())\n' +
+        '\n' +
+        'def z_BK1() -> BK1:\n' +
+        '  BK1{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}}\n' +
+        '\n' +
+        'def ld_BK1(+a: A.Arr<&2, BK1>, +k: U32) -> BK1:\n' +
+        '  A.Arr.get(BK1, 6n, a, k, z_BK1())\n' +
+        '\n' +
+        'def z_DF() -> DF:\n' +
+        '  DF{V64{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}}}\n' +
+        '\n' +
+        'def ld_DF(+a: A.Arr<&2, DF>, +k: U32) -> DF:\n' +
+        '  A.Arr.get(DF, 6n, a, k, z_DF())\n' +
+        '\n' +
+        'def z_BK3() -> BK3:\n' +
+        '  BK3{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}}\n' +
+        '\n' +
+        'def ld_BK3(+a: A.Arr<&2, BK3>, +k: U32) -> BK3:\n' +
+        '  A.Arr.get(BK3, 6n, a, k, z_BK3())\n' +
+        '\n' +
+        'def z_BK4() -> BK4:\n' +
+        '  BK4{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}}\n' +
+        '\n' +
+        'def ld_BK4(+a: A.Arr<&2, BK4>, +k: U32) -> BK4:\n' +
+        '  A.Arr.get(BK4, 6n, a, k, z_BK4())\n' +
+        '\n' +
+        'def z_BK5() -> BK5:\n' +
+        '  BK5{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}}\n' +
+        '\n' +
+        'def ld_BK5(+a: A.Arr<&2, BK5>, +k: U32) -> BK5:\n' +
+        '  A.Arr.get(BK5, 6n, a, k, z_BK5())\n' +
+        '\n' +
+        'def z_BK6() -> BK6:\n' +
+        '  BK6{V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, V16{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}}\n' +
+        '\n' +
+        'def ld_BK6(+a: A.Arr<&2, BK6>, +k: U32) -> BK6:\n' +
+        '  A.Arr.get(BK6, 6n, a, k, z_BK6())\n' +
+        '\n' +
+        'def R1_e(+r: R1, +k: U32) -> F32:\n' +
+        '  match r:\n' +
+        '    case R1{ze, zxh1, zn1, zrs1}:\n' +
+        '      match ze:\n' +
+        '        case V16{u_0, u_1, u_2, u_3, u_4, u_5, u_6, u_7, u_8, u_9, u_10, u_11, u_12, u_13, u_14, u_15}:\n' +
+        '          Bool.pick(F32, U32.is_ne(U32.and(k, 8), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 4), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_15, u_14), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_13, u_12)), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_11, u_10), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_9, u_8))), Bool.pick(F32, U32.is_ne(U32.and(k, 4), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_7, u_6), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_5, u_4)), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_3, u_2), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_1, u_0))))\n' +
+        '\n' +
+        'def R1_xh1(+r: R1, +k: U32) -> F32:\n' +
+        '  match r:\n' +
+        '    case R1{ze, zxh1, zn1, zrs1}:\n' +
+        '      match zxh1:\n' +
+        '        case V16{u_0, u_1, u_2, u_3, u_4, u_5, u_6, u_7, u_8, u_9, u_10, u_11, u_12, u_13, u_14, u_15}:\n' +
+        '          Bool.pick(F32, U32.is_ne(U32.and(k, 8), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 4), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_15, u_14), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_13, u_12)), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_11, u_10), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_9, u_8))), Bool.pick(F32, U32.is_ne(U32.and(k, 4), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_7, u_6), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_5, u_4)), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_3, u_2), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_1, u_0))))\n' +
+        '\n' +
+        'def R1_n1(+r: R1, +k: U32) -> F32:\n' +
+        '  match r:\n' +
+        '    case R1{ze, zxh1, zn1, zrs1}:\n' +
+        '      match zn1:\n' +
+        '        case V16{u_0, u_1, u_2, u_3, u_4, u_5, u_6, u_7, u_8, u_9, u_10, u_11, u_12, u_13, u_14, u_15}:\n' +
+        '          Bool.pick(F32, U32.is_ne(U32.and(k, 8), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 4), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_15, u_14), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_13, u_12)), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_11, u_10), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_9, u_8))), Bool.pick(F32, U32.is_ne(U32.and(k, 4), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_7, u_6), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_5, u_4)), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_3, u_2), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_1, u_0))))\n' +
+        '\n' +
+        'def QKV_q(+r: QKV, +k: U32) -> F32:\n' +
+        '  match r:\n' +
+        '    case QKV{zq, zk, zv}:\n' +
+        '      match zq:\n' +
+        '        case V16{u_0, u_1, u_2, u_3, u_4, u_5, u_6, u_7, u_8, u_9, u_10, u_11, u_12, u_13, u_14, u_15}:\n' +
+        '          Bool.pick(F32, U32.is_ne(U32.and(k, 8), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 4), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_15, u_14), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_13, u_12)), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_11, u_10), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_9, u_8))), Bool.pick(F32, U32.is_ne(U32.and(k, 4), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_7, u_6), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_5, u_4)), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_3, u_2), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_1, u_0))))\n' +
+        '\n' +
+        'def QKV_k(+r: QKV, +k: U32) -> F32:\n' +
+        '  match r:\n' +
+        '    case QKV{zq, zk, zv}:\n' +
+        '      match zk:\n' +
+        '        case V16{u_0, u_1, u_2, u_3, u_4, u_5, u_6, u_7, u_8, u_9, u_10, u_11, u_12, u_13, u_14, u_15}:\n' +
+        '          Bool.pick(F32, U32.is_ne(U32.and(k, 8), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 4), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 2), 0), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_15, u_14), Bool.pick(F32, U32.is_ne(U32.and(k, 1), 0), u_13, u_1'... 446517 more characters,
+      pos: 79473,
+      stk: [
+        [ 'j', 1 ],
+        [ 'base', 3 ],
+        [ 'qkvs', 5 ],
+        [ 'q', 7 ],
+        [ 'kr', 9 ]
+      ],
+      frs: 145,
+      ns: '',
+      al: [Object: null prototype] { A: '../prelude/arr' }
+    },
+    beg: 78797,
+    end: 78798
+  },
+  def: undefined,
+  nte: undefined
+}
+
+Node.js v22.21.1
